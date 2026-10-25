@@ -1,0 +1,39 @@
+# Builds player/dist from mv/ and publishes it with GitHub Pages. Preview thumbnails are rendered locally
+# (`npm run build` in player/) and committed; this job only checks that they match the scenes.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Pages needs a public repository on the free plan; skipped while the repository is private.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: node prepare.mjs --check-thumbs
+        working-directory: player
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: player/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,20 @@
+{
+ "fps": 4,
+ "count": 849,
+ "width": 320,
+ "height": 180,
+ "cols": 10,
+ "rows": 10,
+ "sheets": [
+  "sheet-01.jpg",
+  "sheet-02.jpg",
+  "sheet-03.jpg",
+  "sheet-04.jpg",
+  "sheet-05.jpg",
+  "sheet-06.jpg",
+  "sheet-07.jpg",
+  "sheet-08.jpg",
+  "sheet-09.jpg"
+ ],
+ "source": "d6559757c2a085b8a1a04ad9d7a357668fd2abf7"
+}

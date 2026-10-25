@@ -1,7 +1,7 @@
 import { createYouTube, YT_STATE } from './youtube.js';
 
 const SOURCE_FPS = 60, SOURCE_FRAMES = 12738, DURATION = SOURCE_FRAMES / SOURCE_FPS;
-const STAGE_W = 1920, HIDE_AFTER = 2500;
+const STAGE_W = 1920, HIDE_AFTER = 2500, YOUTUBE_HOLD = 15000;
 const $ = id => document.getElementById(id);
 const player = $('player'), screen = $('screen'), iframe = $('scene-frame'), audio = $('soundtrack'), timeline = $('timeline');
 const bar = $('bar'), controls = $('controls'), playButton = $('play'), status = $('status'), timeInput = $('time-input');
@@ -25,7 +25,7 @@ let requestedTime = null, drawing = false, lastDrawnTime = -1, starting = false,
 let audioGeneration = 0, renderSize = [STAGE_W, 1080], downscaled = false, muted = false;
 let sound = 'file', yt = null, ytWant = 'pause', ytWantAt = 0, pending = null, free = false, stalled = false, skew = 0, lastReported = NaN;
 let hideTimer = 0, toastTimer = 0, overBar = false, scrubbing = false, resumeAfterScrub = false;
-let pointerInput = false, lastPointerType = 'mouse', lastPointer = '';
+let pointerInput = false, lastPointerType = 'mouse', lastPointer = '', mouseX = -1, mouseY = -1, mouseAt = 0;
 const format = t => `${Math.floor(t / 60)}:${(t % 60).toFixed(3).padStart(6, '0')}`;
 const clampFrame = f => Math.max(0, Math.min(lastFrame, Math.round(f)));
 const clockTime = () => audioClock ? audio.currentTime : anchorTime + (stalled ? 0 : (performance.now() - anchorNow) / 1000 * rate * (1 + skew));
@@ -76,15 +76,26 @@ function updateControls() {
   }
 }
 
-// Floating bar: shown on pointer movement, touch or keys; fades after HIDE_AFTER ms of inactivity.
+// Floating bar: shown on pointer movement, touch or keys; fades after HIDE_AFTER ms of inactivity, and stays while
+// the pointer is on it or on the YouTube player. The YouTube player is hidden when the bar fades.
 function holdBar() {
   const active = document.activeElement;
-  return overBar || scrubbing || !isReady || (bar.contains(active) && (active.matches('select, input[type="text"]') || active.matches(':focus-visible')));
+  return overBar || onYouTube() || scrubbing || !isReady || (bar.contains(active) && (active.matches('select, input[type="text"]') || active.matches(':focus-visible')));
+}
+// Mouse moves inside the YouTube iframe don't reach this page, and Chrome doesn't always send the page a
+// pointerover for it either. A mouse last seen on or within 48 px of the player counts as resting on it, for up to
+// YOUTUBE_HOLD ms in case it went on out of the window.
+function onYouTube() {
+  const yt = $('yt'), m = 48;
+  if (yt.hidden || yt.classList.contains('tucked') || performance.now() - mouseAt > YOUTUBE_HOLD) return false;
+  const r = yt.getBoundingClientRect();
+  return mouseX > r.left - m && mouseX < r.right + m && mouseY > r.top - m && mouseY < r.bottom + m;
 }
 function hideBar() {
   if (holdBar()) { hideTimer = setTimeout(hideBar, 800); return; }
   document.body.classList.add('idle');
   preview.hidden = true;
+  if (sound === 'youtube') setYouTubeShown(false);
 }
 function revealBar() {
   document.body.classList.remove('idle');
@@ -95,6 +106,7 @@ function hideBarNow() {
   clearTimeout(hideTimer);
   if (document.activeElement && bar.contains(document.activeElement)) document.activeElement.blur();
   document.body.classList.add('idle');
+  if (sound === 'youtube') setYouTubeShown(false);
 }
 
 // Idle prewarm: scenes are created before they are needed, nearest to the playhead first. While playing
@@ -167,7 +179,7 @@ function pause() {
   playing = false;
   starting = false;
   pending = null;
-  free = false;
+  setFree(false);
   stalled = false;
   audioGeneration++;
   audio.pause();
@@ -301,7 +313,7 @@ function followYouTube(t) {
   anchorTime = t;
   anchorNow = performance.now();
   stalled = true;
-  free = false;
+  setFree(false);
   pending = { t, since: anchorNow, reseeked: false };
 }
 function steer() {
@@ -313,7 +325,7 @@ function steer() {
     else if (state === YT_STATE.PLAYING && !pending.reseeked) { pending.reseeked = true; yt.seekTo(pending.t, true); }
     else if (state !== YT_STATE.PLAYING && waited > (state === YT_STATE.BUFFERING ? 10000 : 3000)) {
       pending = null;
-      free = true;
+      setFree(true);
       stalled = false;
       anchorNow = now;
       setStatus('YouTube 소리가 시작되지 않았습니다. 오른쪽 위 YouTube 화면을 누르면 소리가 함께 나옵니다.', 8000);
@@ -345,7 +357,12 @@ function onYouTubeState(state) {
   else if (state === YT_STATE.PAUSED && ytWant === 'play' && !echo && playing) pause();
   else if (state === YT_STATE.ENDED && playing) { frame = lastFrame; pause(); void seekTime(lastFrame / fps); revealBar(); }
 }
-// YouTube asks for its player to stay visible; hiding it is left to the viewer.
+// While YouTube waits for a click to start the sound, its player is shown even when hidden.
+function setFree(value) {
+  free = value;
+  $('yt').classList.toggle('waiting', value);
+}
+// Once hidden, the YouTube player comes back only with Y or the bar button, until the bar fades again.
 function setYouTubeShown(shown) {
   $('yt').classList.toggle('tucked', !shown);
   $('youtube').setAttribute('aria-pressed', String(shown));
@@ -483,7 +500,9 @@ document.addEventListener('pointermove', event => {
   const at = `${event.clientX},${event.clientY}`;
   if (at === lastPointer) return;
   lastPointer = at;
-  if (event.pointerType === 'mouse') revealBar();
+  if (event.pointerType !== 'mouse') return;
+  mouseX = event.clientX; mouseY = event.clientY; mouseAt = performance.now();
+  revealBar();
 });
 document.addEventListener('pointerdown', event => {
   pointerInput = true;

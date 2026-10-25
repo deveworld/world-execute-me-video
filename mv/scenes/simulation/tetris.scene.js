@@ -1,5 +1,5 @@
 // 62.93–66.63 "Then I can, then I can be your only SATISFACTION"
-// Vivid blue screen, a Tetris well (10×20) whose game was read off the reference move by move:
+// Vivid blue screen, a Tetris well (10×20):
 // a T drops, a J is steered in, an I hard-drops into the right column and clears four lines.
 import { vignetteCanvas, clamp, pwl } from './lib/common.js';
 import { layout, drawPixelText } from './lib/pixelfont.js';
@@ -57,7 +57,7 @@ const SHAPES = {
   J: [[0, 0], [1, 0], [1, 1], [1, 2]], I: [[0, 0], [0, 1], [0, 2], [0, 3]], S: [[0, 1], [0, 2], [1, 0], [1, 1]],
 };
 const CLEAR_ROWS = [16, 17, 18, 19];
-// stack collapse after the clear (px), measured frame by frame
+// stack collapse after the clear (px per frame)
 const FALL = [[65.967, 0], [65.983, 1], [66.0, 5], [66.017, 14], [66.033, 24], [66.05, 36], [66.067, 48], [66.083, 60], [66.1, 72],
   [66.117, 83], [66.133, 93], [66.15, 102], [66.167, 110], [66.183, 118], [66.2, 124], [66.217, 130], [66.233, 135], [66.25, 139],
   [66.267, 142], [66.283, 145], [66.3, 148], [66.317, 150], [66.333, 152], [66.35, 154], [66.367, 155], [66.383, 156], [66.4, 157],
@@ -105,7 +105,7 @@ function cellsAt(m, t) {
   for (const [kt, cells] of m.keys) if (atFrame(t, kt)) cur = cells;
   return cur;
 }
-// Lock flash: the outline of a piece turns white when it locks and fades back (measured per frame).
+// Lock flash: the outline of a piece turns white when it locks and fades back.
 const FLASH = [[0, 1], [1, 0.94], [2, 0.75], [3, 0.65], [4, 0.55], [5, 0.48], [6, 0.43], [8, 0.32], [10, 0.25], [12, 0.2], [14, 0.12], [17, 0.08], [21, 0]];
 const FLASH_SATIS = [[0, 1], [2, 0.92], [3, 0.84], [4, 0.71], [5, 0.65], [6, 0.57], [7, 0.49], [8, 0.42], [9, 0.37], [11, 0.33], [13, 0.23], [15, 0.2], [17, 0.155], [21, 0.13], [23, 0.09], [26, 0]];
 function flashAt(table, t, frame) {

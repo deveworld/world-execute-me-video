@@ -1,5 +1,5 @@
 // The small device caption at the bottom-left of every era screen ("DEC VT100", "Ubuntu", …):
-// Inter Display SemiBold (V3: widths match the original within 1-2 px; plain Inter ran ~3 % wide),
+// Inter Display SemiBold (plain Inter runs ~3 % wide),
 // ~85 % white, cap-top at y=966, left ink edge at x=120.
 const FONT = '600 25.3px "Inter Display", Inter';
 export function addLabel(root, env, text, opts = {}) {

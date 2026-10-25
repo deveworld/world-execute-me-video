@@ -1,4 +1,4 @@
-// Airport split-flap board, 51.425–55.108333. Every flap is sought from song time.
+// Airport split-flap board, 51.425–55.108333.
 import { BOARD_TYPE } from './board_type.js';
 import { FLAP_FIRST, FLAP_STATES, LYRIC_STATES } from './board_flaps.js';
 const W=1920,H=1080;
@@ -79,7 +79,7 @@ export default {
       ctx.save();rr(ctx,c.x+1,c.y+1,c.w-2,c.h-2,4);ctx.clip();
       if(p==null){ctx.drawImage(a,c.x,c.y);}else{
         ctx.drawImage(b,0,0,c.w,h,c.x,c.y,c.w,h);ctx.drawImage(a,0,h,c.w,bh,c.x,c.y+h,c.w,bh);
-        // flap shading measured on the status card: the revealed top half sits in the falling flap's shadow
+        // flap shading: the revealed top half sits in the falling flap's shadow
         // and the flap darkens as it tilts
         const k=Math.cos(Math.PI*p);
         if(k>0){ctx.fillStyle=`rgba(0,0,0,${.55*k})`;ctx.fillRect(c.x,c.y,c.w,h);ctx.drawImage(a,0,0,c.w,h,c.x,c.y+h-h*k,c.w,h*k);ctx.fillStyle=`rgba(0,0,0,${.35*(1-k)})`;ctx.fillRect(c.x,c.y+h-h*k,c.w,h*k);}

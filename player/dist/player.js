@@ -16,7 +16,7 @@ function choose(select, ...values) {
 choose(resolutionSelect, params.get('res'), stored('viewer.resolution'), 'fit');
 choose(fpsSelect, params.get('fps'), stored('viewer.fps'), '60');
 
-// Frame k of the chosen rate is song time k / fps; the scenes are pure functions of time, so any rate is exact.
+// Frame k of the chosen rate is song time k / fps; scenes are pure functions of time, so any rate works.
 const framesAt = rate => Math.ceil(SOURCE_FRAMES * rate / SOURCE_FPS - 1e-9);
 let fps = Number(fpsSelect.value), lastFrame = framesAt(fps) - 1;
 let stage, isReady = false, playing = false, frame = 0, rate = 1, raf = 0;
@@ -31,7 +31,7 @@ const clampFrame = f => Math.max(0, Math.min(lastFrame, Math.round(f)));
 const clockTime = () => audioClock ? audio.currentTime : anchorTime + (stalled ? 0 : (performance.now() - anchorNow) / 1000 * rate * (1 + skew));
 timeline.max = String(lastFrame);
 
-// "화면 맞춤" fills the window at its device resolution. A fixed resolution draws the stage on exactly
+// "화면 맞춤" fills the window at its device resolution. A fixed resolution draws the stage on
 // that many device pixels (1:1, like render.mjs --scale); if the window is too small it is shown fitted.
 function layout() {
   const dpr = devicePixelRatio || 1, vw = player.clientWidth, vh = player.clientHeight;
@@ -337,7 +337,8 @@ function steer() {
   if (Math.abs(drift) > 0.3) { anchorTime = reported; skew = 0; }
   else { anchorTime = t; skew = Math.max(-0.05, Math.min(0.05, drift * 0.5)); }
 }
-// Play and pause pressed on the YouTube player itself are followed; echoes of our own commands are not.
+// Play and pause pressed on the YouTube player itself are followed. State changes that echo our own
+// commands are ignored.
 function onYouTubeState(state) {
   const echo = performance.now() - ytWantAt < 1000;
   if (state === YT_STATE.PLAYING && ytWant === 'pause') { if (echo) yt.pauseVideo(); else if (isReady && !fatal) void play(); }

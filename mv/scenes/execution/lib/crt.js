@@ -4,7 +4,7 @@
 //   - the glass outline: a rounded rectangle in undistorted space, so its edges bow like the picture,
 //   - scanlines (period in px, phase) and an aperture-grille style mask,
 //   - a soft vignette towards the glass edge,
-//   - optionally a dim bezel lip (rim) around the glass, with its own outline (V3: fitted to the original).
+//   - optionally a dim bezel lip (rim) around the glass, with its own outline.
 // Everything is a pure function of the uniforms, so frames are deterministic.
 
 const VS = `#version 300 es

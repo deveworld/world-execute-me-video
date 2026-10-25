@@ -1,6 +1,6 @@
 // 47.725–51.425 "And then blind my vision / So dizzy, so dizzy": eye chart + drawn eye.
 // Canvas 2D, vector iris intensity contours with a WebGL radial pupil morph,
-// measured polyline lids and lash strands. From 49.58 the "dizzy" look:
+// polyline lids and lash strands. From 49.58 the "dizzy" look:
 // a peach and a blue copy (additive) drifting apart and back, pupils drawn on top as a union.
 import { LASHES } from './eye/lashes.js';
 import { CLOSED_LID } from './eye/closed-lid.js';
@@ -38,7 +38,7 @@ function track(keys) {
   };
 }
 
-// ---- timeline (frame-exact on the reference) ----
+// ---- timeline ----
 const ROWS = [
   { parts: [['AND', 47.750, .44]], size: 152.5, base: 281, label: '0.4', lb: 280.5 },
   { parts: [['THEN', 47.9165, .15]], size: 122, base: 424, label: '0.5', lb: 425.5 },
@@ -56,7 +56,7 @@ const dAND = track([
 ]);
 const rpDizzy = track([[49.58, 63], [49.75, 63], [50.0, 64], [50.25, 70], [50.5, 70.5], [50.75, 78.5], [51.0, 80.5], [51.2, 85.8], [51.45, 86]]);
 
-// lid openness (0 closed .. 1 open), measured on the lid heights at x=1240
+// lid openness (0 closed .. 1 open) from the lid heights at x=1240
 const linTrack = (keys) => (t) => {
   if (t <= keys[0][0]) return keys[0][1];
   for (let i = 1; i < keys.length; i++) {
@@ -69,7 +69,7 @@ const openLo1 = linTrack([[47.750, 0], [47.767, 0.41], [47.783, 0.62], [47.80, 0
 const closeUp = linTrack([[49.150, 0], [49.167, 0.10], [49.183, 0.10], [49.200, 0.23], [49.217, 0.51], [49.233, 0.76], [49.250, 0.91], [49.267, 1]]);
 const closeLo = linTrack([[49.150, 0], [49.183, 0.05], [49.200, 0.36], [49.217, 0.64], [49.233, 0.81], [49.250, 0.94], [49.267, 1]]);
 const openUp2 = linTrack([[49.567, 0], [49.583, 0.49], [49.600, 0.82], [49.617, 0.90], [49.633, 0.947], [49.650, 0.97], [49.667, 0.987], [49.700, 0.997], [49.750, 1]]);
-// reopening: the measured lashes are already up (short at 49.6, full length by 49.667)
+// reopening: the lashes are already up (short at 49.6, full length by 49.667)
 const reopenLashLen = linTrack([[49.600, 0.55], [49.633, 0.85], [49.667, 1]]);
 const closeLashLen = linTrack([[49.150, 1], [49.167, 0.7], [49.183, 0.45], [49.200, 0.15], [49.217, 0]]);
 const openLo2 = linTrack([[49.567, 0], [49.583, 0.27], [49.600, 0.69], [49.617, 0.83], [49.650, 0.92], [49.750, 1]]);
@@ -91,17 +91,17 @@ function irisCenter(t) {
   return [lerp(1221, 1240, k), lerp(554, 540, k)];
 }
 const whiteness = (t) => (t >= DIZZY_T0 ? 0 : ramp(t, 48.64, 48.90));
-// upper-lid descent (px at x=1240), measured frame by frame on the source: a step at 50.0-50.3, a hold, a step at 50.95-51.25
+// upper-lid descent (px at x=1240): a step at 50.0-50.3, a hold, a step at 50.95-51.25
 const upperDizzy=linTrack([[49.95, 0], [49.983, 1], [50.0, 3], [50.033, 8], [50.067, 12], [50.083, 18], [50.117, 26], [50.15, 32], [50.183, 38], [50.217, 42], [50.25, 46], [50.283, 48], [50.317, 49], [50.35, 49], [50.4, 47], [50.45, 46], [50.683, 46], [50.7, 49], [50.917, 49], [50.95, 51], [50.983, 54], [51.017, 57], [51.05, 61], [51.083, 65], [51.117, 68], [51.15, 72], [51.183, 76], [51.217, 78], [51.25, 79], [51.45, 79]]);
 const squint = (t) => (t >= DIZZY_T0 ? upperDizzy(t)/36 : ramp(t, 48.25, 49.0));
 const glow = (t) => ramp(t, 48.2, 48.34, outCubic);
-// closed lid at 47.733 vs 49.4: vertical offset per column (cross-correlated on the source)
+// closed lid at 47.733 vs 49.4: vertical offset per column
 const OPEN_SHOT_SHIFT = (x) => { const k = [[720, 1], [800, 5], [880, 8], [960, 10], [1040, 11], [1120, 12], [1200, 13], [1280, 12], [1360, 11], [1440, 9], [1520, 7], [1600, 4], [1680, 2], [1760, 0]]; if (x <= k[0][0]) return k[0][1]; for (let i = 1; i < k.length; i++) if (x <= k[i][0]) return k[i - 1][1] + (k[i][1] - k[i - 1][1]) * (x - k[i - 1][0]) / (k[i][0] - k[i - 1][0]); return 0; };
-// Dizzy iris: per-channel levels fitted to the source (less violet, greener mid-tones), and the
-// exposure ramp of the reopening eye (iris brightness measured frame by frame, 49.583-49.7).
+// Dizzy iris: per-channel levels (less violet, greener mid-tones), and the
+// exposure ramp of the reopening eye (49.583-49.7).
 const irisExposure = linTrack([[49.583, 0.6], [49.6, 0.68], [49.617, 0.77], [49.633, 0.82], [49.65, 0.87], [49.667, 0.92], [49.683, 0.97], [49.7, 1]]);
 // Dizzy copies: the iris copies are peach and blue, but on the lid lines and lashes the source's
-// left copy is a neutral grey-white and the right one a dim blue-grey (sampled on the lid lines).
+// left copy is a neutral grey-white and the right one a dim blue-grey.
 const EYE_TINT_L = [207, 206, 213], EYE_TINT_R = [113, 109, 152];
 const DIZZY_GAIN = [1.0, 1.32, 1.06], DIZZY_OFFSET = [-3.8, -26, -18.8];
 function dizzyIris(t) {
@@ -161,7 +161,7 @@ export default {
     if (XS[XS.length - 1] !== CORNER_R[0]) XS.push(CORNER_R[0]);
     const S_UP = sampleAtX(UPPER_OPEN, XS), S_LO = sampleAtX(LOWER_OPEN, XS);
     const S_CA = sampleAtX(CLOSED_A, XS), S_CB = sampleAtX(CLOSED_B, XS);
-    // the dizzy squint is centred a little right of the iris (lid edge measured across x at 50.6 and 51.3)
+    // the dizzy squint is centred a little right of the iris
     const squintD = (x, c = 1240) => 36 * Math.max(0, 1 - ((x - c) / 576) ** 2);
     // crease = upper lid raised by a gap that depends on openness
     const inRange = (pts, x) => x >= pts[0][0] && x <= pts[pts.length - 1][0];
@@ -209,7 +209,7 @@ export default {
         return {cx,cy,rp,w,o};
       }
       if (t < 47.76 && o < .004) {
-        // first frames of the shot: the same closed lid, measured slightly higher (vertical shift by column)
+        // first frames of the shot: the same closed lid, slightly higher (vertical shift by column)
         for (let x0 = 680; x0 < 1770; x0 += 60) {
           ec.save(); ec.beginPath(); ec.rect(x0, 0, 60, H); ec.clip();
           ec.translate(0, -OPEN_SHOT_SHIFT(x0 + 30));
@@ -288,7 +288,7 @@ export default {
         ec.beginPath(); catmull(ec, upper.map(([x, y], i) => [x, y + 5 * Math.sin(Math.PI * i / (upper.length - 1))])); ec.stroke();
       }
       // lashes
-      // blink: the measured lashes shrink away as the lid starts to fall (gone at 49.217), then hang down
+      // blink: the lashes shrink away as the lid starts to fall (gone at 49.217), then hang down
       const reopen=t>=49.592&&t<49.75,closing=t>=49.15&&t<49.217;
       const preciseLashAlpha=reopen||closing?1:t>=49.15&&t<49.267?0:sstep((o-.78)/.20),lashLen=reopen?reopenLashLen(t):closing?closeLashLen(t):1;
       ec.globalAlpha=t>=49.15&&t<49.225?0:1-preciseLashAlpha;
@@ -381,7 +381,7 @@ export default {
           const dx = dxPerSize * row.size;
           const x = row.x0 + row.offs[i] + dx;
           if (f === 0) {
-            // first frame: dim (measured per word), squashed from the top
+            // first frame: dim (per word), squashed from the top
             g.save();
             g.globalAlpha *= firstAlpha;
             g.translate(0, row.base);

@@ -12,7 +12,7 @@ const M1 = [1630, 768], M2 = [1192, 873];
 const SHADOW = { cx: 1428.5, cy: 836, a: 247.5, b: 107.5, rot: -4.34 * Math.PI / 180 };
 const INK = '#262020', BLUE = '#5c5ade', ORANGE = '#b95e3b';
 
-// measured hatch rows: [y, x0, x1, strength 0..1]
+// hatch rows: [y, x0, x1, strength 0..1]
 const ROWS = [[703, 1167, 1606, .3], [708, 1196, 1609, .62], [714, 1141, 1667, .6], [719, 1151, 1703, .62], [725, 1108, 1742, .6],
   [731, 1115, 1691, .3], [736, 1075, 1700, .64], [742, 1028, 1725, .95], [748, 1047, 1692, .62], [754, 1004, 1726, .9],
   [760, 1044, 1718, .6], [766, 975, 1766, .95], [772, 1007, 1730, .6], [779, 990, 1766, .55], [785, 1027, 1686, .63],
@@ -24,7 +24,7 @@ const ROWS = [[703, 1167, 1606, .3], [708, 1196, 1609, .62], [714, 1141, 1667, .
 
 const WORDS = [
   // [text, line, t50, color]
-  // 50% points measured per word from the source (frame/60); each word fades in over 5 frames.
+  // t50: the word's 50% point (frame/60); each word fades in over 5 frames.
   ['If', 0, 0], ['I’m', 0, 5130.6 / 60], ['the', 0, 5152.8 / 60], ['only', 0, 5156.3 / 60], ['God', 0, 5178.2 / 60],
   ['Then', 1, 5195.8 / 60], ['you’re', 1, 5213.8 / 60], ['the', 1, 5227.6 / 60], ['proof', 1, 5239.7 / 60], ['of', 1, 5256.9 / 60], ['my', 1, 5269.6 / 60, BLUE],
 ];
@@ -109,7 +109,7 @@ export default {
       return [c, c.getContext('2d', { willReadFrequently: true })];
     };
     const { ctx: out } = env.canvas(root, { options: { willReadFrequently: true } });
-    // CSS radial-gradient equivalents (ellipse/circle, stops as in the former CSS backgrounds).
+    // CSS radial-gradient equivalents (ellipse/circle).
     const radial = (cx, cy, rx, ry, stops) => {
       const [c, g] = mk();
       g.setTransform(rx / ry, 0, 0, 1, cx, cy);
@@ -121,7 +121,7 @@ export default {
     };
     const bgC = radial(960, 540, 1104, 1080, [['#e3ded9', .4], ['#e1dcd7', .58], ['#dcd7d2', .725], ['#d6d1cc', .87], ['#d2cdc8', 1]]);
     // Translucent light layers are filled straight into the output with their opacity folded into the stops
-    // (float precision, quantised once), instead of going through an 8-bit intermediate.
+    // (float precision, quantised once).
     const SHADE = [960, 540, 1104, 1080, [[[0, 0, 0], 0, .62], [[40, 30, 25], .015, .8], [[40, 30, 25], .025, 1]]];
     const GLOW1 = [STAR[0], STAR[1], 600, 600, [[[252, 245, 240], .45, 0], [[252, 245, 240], .45, 150 / 600], [[252, 245, 240], .31, 240 / 600], [[252, 245, 240], .23, 300 / 600], [[252, 245, 240], .19, 420 / 600], [[252, 245, 240], .06, 480 / 600], [[252, 245, 240], 0, 1]]];
     const GLOW2 = [STAR[0], STAR[1], 1000, 1000, [[[255, 250, 246], .5, 0], [[255, 250, 246], .42, .26], [[255, 250, 246], .18, .62], [[255, 250, 246], .06, 1]]];
@@ -131,7 +131,7 @@ export default {
       for (const [[r, g, b], a, at] of stops) gr.addColorStop(at, `rgba(${r},${g},${b},${(a * op).toFixed(5)})`);
       out.fillStyle = gr; out.fillRect(-cx * ry / rx - 1, -cy - 1, 1922 * ry / rx, 1082); out.restore();
     };
-    const [canvas, ctx] = mk(); // the drawing layer (formerly the scene canvas)
+    const [canvas, ctx] = mk(); // the drawing layer
 
     // ---------- pre-rendered layers ----------
     const rng = env.rng(85117);
@@ -208,7 +208,7 @@ export default {
     sp.clip();
     drawSphereHatch(sp);
     sp.restore();
-    // Thin vector ribbons follow the measured engraving topology at native resolution.
+    // Thin vector ribbons follow the engraving at native resolution.
     const ribbons=(c,bands,color,opacities)=>{c.clearRect(0,0,1920,1080);c.save();c.translate(.5,.5);c.fillStyle=color;bands.forEach(([level,d],i)=>{c.globalAlpha=opacities[i];c.fill(new Path2D(d),'evenodd');});c.restore();c.globalAlpha=1;};
     ribbons(h,GROUND_INK,'#000000',[.25,.50,1]);
     ribbons(sh,SHADOW_INK,'#000000',[.25,.50,1]);
@@ -229,7 +229,7 @@ export default {
       const s = document.createElement('span');
       s.textContent = w;
       if (col) s.style.color = col;
-      // Per-word x nudges (px) measured against the source; the source's word spacing is not uniform.
+      // Per-word x nudges (px): the original's word spacing is uneven.
       const nudge = [0, -1, -2.25, -3, -0.75, 0, 2, 1, 1.25, 1.75, 1][i];
       if (nudge) s.style.cssText += `;position:relative;left:${nudge}px`;
       if (i && WORDS[i - 1][1] === li) lines[li].appendChild(document.createTextNode(' '));
@@ -243,7 +243,7 @@ export default {
       const s = document.createElement('span');
       s.textContent = ch;
       ex.appendChild(s);
-      // Letter pop frames traced from the source (not evenly spaced: i/s and t/e land together).
+      // Letter pop frames (uneven: i/s and t/e land together).
       return { s, t: ([5291, 5292, 5293, 5293, 5294, 5294, 5295, 5297, 5298][i] - 0.5) / 60 };
     });
     // Fractional layout read back from the DOM (getBoundingClientRect; offsetLeft/Top would round to whole px).
@@ -253,7 +253,7 @@ export default {
     const xOf = (el) => el.getBoundingClientRect().left - R0.left;
     const LINES = lines.map((d, i) => ({ x: i ? 120.4 : 118.4, dx: i ? -0.25 : -0.5, y: baseOf(d), sx: i ? 0.9846 : 0.988 }));
     const EXL = { y: baseOf(ex), sx: 0.9845 };
-    // Lyric lines: layout offsets plus small measured residuals matched best against the former DOM raster.
+    // Lyric lines: layout offsets plus small per-line corrections.
     const WDX = [0, 0, 0, 0.25, 0, -0.125, 0.25, 0, -0.625, 0, -0.5];
     const wordDraw = WORDS.map(([w, li, t50, col], i) => { const L = LINES[li]; return { w, li, col: col || INK, x: L.x + L.dx + WDX[i] + L.sx * words[i].s.offsetLeft, t: t50 }; });
     const exDraw = exLetters.map((L, i) => ({ ch: 'Existence'[i], x: xOf(L.s), t: L.t }));
@@ -292,7 +292,7 @@ export default {
         const ko = ease.inOutQuad(prog(t, 86.825, 0.11));
         if (ko > 0) {
           const kf = prog(t, 86.85, 0.06);
-          // Disc tone: 227,222,217 while the outline is drawn (measured), lifting as the engraving fades in.
+          // Disc tone: 227,222,217 while the outline is drawn, lifting as the engraving fades in.
           const kt = prog(t, 86.95, 0.1);
           ctx.fillStyle = `rgba(${Math.round(lerp(227, 236, kt))},${Math.round(lerp(222, 229, kt))},${Math.round(lerp(217, 224, kt))},${kf.toFixed(3)})`;
           ctx.beginPath();
@@ -400,7 +400,7 @@ export default {
           ctx.fillRect(300, 742.6, 186.5 * ku, 2.8);
         }
 
-        // composite: paper, shade, glows, drawing layer, then the lyric (same stacking as the former DOM)
+        // composite: paper, shade, glows, drawing layer, then the lyric
         out.drawImage(bgC, 0, 0);
         for (const [L, al] of [[SHADE, aShade], [GLOW1, g1], [GLOW2, aGlow2]]) if (al > 0) lightLayer(L, +al.toFixed(3));
         out.globalAlpha = 1;
@@ -421,7 +421,7 @@ export default {
   },
 };
 
-// 12 straight rays of 5 parallel lines with stepped lengths (centre lengths measured per direction)
+// 12 straight rays of 5 parallel lines with stepped lengths (centre length per direction)
 const RAY_RNG = (() => {
   let a = 1234567;
   return () => ((a = (a * 1103515245 + 12345) >>> 0) / 4294967296);

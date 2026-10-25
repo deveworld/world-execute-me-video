@@ -1,5 +1,4 @@
 // Blueprint "SWITCH MY CURRENT": geometry + timing of the bridge-rectifier schematic.
-// All numbers were measured off the reference frames (1080p, frame-exact timings).
 
 export const T_SCENE = 2671 / 60;          // first frame of the shot in the original (44.5167)
 export const P = 60 / 130;                  // source period = one beat (2.17 Hz label)
@@ -27,7 +26,7 @@ export const TL = {
 
 const blip = (t) => 0.5 * Math.exp(-(((t - 47.508) / 0.018) ** 2));
 
-// Normalized branch currents (dot speed = K * current). Fitted to the dot motion in the original.
+// Normalized branch currents (dot speed = K * current).
 export function currents(t) {
   const v = vSrc(t), av = Math.abs(v);
   const up = sstep((t - TL.ch0) / 0.03), dn = 1 - clamp((t - TL.ch1) / (TL.dc - TL.ch1));
@@ -94,7 +93,7 @@ export const DIODES = [
   { id: 'D4', a: 'B', b: 'R', grp: 14 },
 ];
 
-// Labels (Architects Daughter, lavender); baseline-left positions fitted on the reference.
+// Labels (Architects Daughter, lavender); baseline-left positions.
 export const LABELS = [
   ['D1', 658, 417, 26.5], ['D2', 996, 417, 26.5], ['D3', 654, 759, 26.5], ['D4', 996, 759, 26.5],
   ['G1', 828, 525, 26.5], ['S1', 669, 612, 27], ['2.17 HZ', 800, 651, 26.5], ['S2', 1235, 349, 27.5],

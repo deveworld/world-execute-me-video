@@ -65,7 +65,7 @@ export function marker(ctx, x, y, alpha = 1, s = 1, core = '#ffb59a') {
   if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  // halo: narrower and less red than before (source halo is ≈ neutral beyond ~12 px)
+  // halo: ≈ neutral beyond ~12 px
   const gr = 15 * Math.sqrt(s) + 2;
   const g = ctx.createRadialGradient(x, y, 0, x, y, gr);
   g.addColorStop(0, 'rgba(250,165,135,0.55)');

@@ -1,16 +1,16 @@
-// Viewer stage runtime: engine/runtime.js plus a scene cache for seeking. Copied scenes and the engine
-// stay untouched; only the live viewer loads this file.
+// Viewer stage runtime: engine/runtime.js plus a scene cache for seeking. Only the live viewer loads
+// this file.
 //
-// A scene that goes out of range is hidden instead of destroyed, so jumping back to it is one render(t)
-// call, and prewarm(t) creates scenes ahead of time while the viewer is idle. render(t) is a pure function
-// of t (AGENTS.md: frames are visited in any order), so a cached instance draws the same frame as a new one.
-// Creates run one at a time. WebGL contexts are counted per scene so Chrome's context limit is never hit.
+// A scene that goes out of range stays mounted but hidden, so jumping back to it is one render(t) call,
+// and prewarm(t) creates scenes ahead of time while the viewer is idle. render(t) is a pure function of t
+// (see mv/AGENTS.md), so a cached instance draws the same frame as a new one.
+// Creates run one at a time. WebGL contexts are counted per scene so the cache stays under Chrome's context limit.
 import * as beat from '../engine/beat.js';
 import * as anim from '../engine/lib/anim.js';
 
 const W = 1920, H = 1080, MAX_WEBGL = 12;
 const stage = document.getElementById('stage');
-// "/scenes/..." style URLs (scene index, env loaders) are relative to the project root, not the host, so the
+// "/scenes/..." style URLs (scene index, env loaders) resolve against the project root, so the
 // stage also works under a path prefix such as a GitHub Pages project site.
 const ROOT = new URL('../', import.meta.url);
 const fromRoot = (url) => typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? new URL(url.slice(1), ROOT).href : url;
@@ -61,7 +61,7 @@ const record = (scene, t, err) => {
   console.error(`[scene ${scene}] t=${t}: ${message}`);
 };
 
-// Errors raised while prewarming stay with the scene until it is shown, so a hidden failure never stops playback.
+// Errors raised while prewarming stay with the scene until it is shown, so a failure in a hidden scene doesn't stop playback.
 function showError(s, t, err, quiet = false) {
   s.failed = true;
   if (quiet) s.deferred = { t, err };

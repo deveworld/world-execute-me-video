@@ -1,13 +1,13 @@
 // 0 – 7.33  CRT boot ("Switch on the power line / Remember to put on PROTECTION")
 //           then "Lay down your pieces / And let's begin OBJECT CREATION" with the Boing ball.
-// Content is drawn flat (1920x1080) and shown through the measured CRT (lib/crt.js).
+// Content is drawn flat (1920x1080) and shown through the CRT model in lib/crt.js.
 import { createCRT } from './lib/crt.js';
 import { createBoing } from './lib/boing.js';
 import * as T from './lib/term.js';
 
 const F = (n) => n / 60; // frame -> seconds
 
-// ---- typing script (measured frame-exactly on the original) ----
+// ---- typing script ----
 const LYRIC_A = [
   { text: 'Switch', t0: -1, cps: 1e9 },
   { text: ' on', t0: F(37), cps: 180 },
@@ -88,8 +88,8 @@ export default {
       ctx.fillRect(0, 0, 1920, 1080);
     }
 
-    // Cursor visibility measured frame by frame on the original (inclusive frame ranges): the
-    // terminal's blink restarts irregularly after keystrokes, so a pure beat rule misses frames.
+    // Cursor visibility as inclusive frame ranges. The terminal's blink restarts irregularly after
+    // keystrokes, so it can't be derived from the beat.
     const CURSOR_ON = [[13,26],[38,53],[57,81],[96,103],[105,114],[124,137],[146,168],[177,188],[192,198],[207,220],
       [231,247],[258,283],[286,303],[318,337],[345,362],[373,380],[383,389],[401,404],[407,414],[428,440]];
     function cursorVisible(t, lastEvent) {
@@ -105,7 +105,7 @@ export default {
     }
 
     function bigWipe(text, x, y, t0, t, col) {
-      // Measured raster reveal: the top ~35% band of the word is drawn left to right at 8 glyphs per
+      // Raster reveal: the top ~35% band of the word is drawn left to right at 8 glyphs per
       // frame, then (two frames after the start) the lower band at the same rate.
       const fr = (t - t0) / F(1);
       if (fr <= 1e-6) return false;
@@ -154,7 +154,7 @@ export default {
       // big "Protection"
       const protDone = bigWipe('Protection', T.X0, 631, PROT_T0, t, COL_LYRIC);
       // cursor
-      // (measured: the cursor stays after "line" on frame 103, is hidden on 104, then jumps to row 4)
+      // (the cursor stays after "line" on frame 103, is hidden on 104, then jumps to row 4)
       if (t < LYRIC_B[0].t0 + F(1)) cursorAt(0, a.s.length, lastTyped(LYRIC_A, t), t);
       else if (t < PROT_T0 + F(0.5)) cursorAt(4, b.s.length, lastTyped(LYRIC_B, t), t);
       else if (protDone) cursorAt(0, 10, PROT_T0 + F(4), t, 2, 631);
@@ -210,12 +210,12 @@ export default {
 
     // CRT power-on: line at 0.033, vertical opening (ease-out cubic) until ~0.25
     function power(t) {
-      // (measured: the warm-up glow of frames 0-1 stays on outside the opening band until ~0.12 s)
+      // (the warm-up glow of frames 0-1 stays on outside the opening band until ~0.12 s)
       const resid = 0.72 * (1 - Math.min(1, Math.max(0, (t - F(6)) / F(3))));
       if (t < F(2)) return { sy: 1, lit: 0, gain: 1.3, beam: 0, resid: t < F(1) ? 0.76 : 0.72 };
       if (t < F(3)) return { sy: 0.001, lit: 0, beam: 1.0, beamHalfW: 905, beamThick: 3.5, resid };
       const x = Math.min(1, (t - 0.036) / 0.21);
-      // First frames of the opening measured from the text row position on the original.
+      // Opening height of the first frames.
       const OPEN = [[F(3), .153], [F(4), .389], [F(5), .577], [F(6), .72], [F(7), .813], [F(8), .875], [F(9), .909], [F(10), .946]];
       let sy = Math.max(0.02, 1 - Math.pow(1 - x, 3));
       if (t < F(10)) for (let i = 1; i < OPEN.length; i++) if (t <= OPEN[i][0]) { const [a0, v0] = OPEN[i - 1], [a1, v1] = OPEN[i]; sy = v0 + (v1 - v0) * Math.max(0, (t - a0) / (a1 - a0)); break; }
@@ -228,7 +228,7 @@ export default {
         background();
         if (t < F(2)) { /* warming up: lit glass only */ }
         else if (t < CLEAR_T) {
-          // Measured warm-up settling of the first terminal lines, in native output pixels.
+          // Warm-up settling of the first terminal lines, in native output pixels.
           const settle=[[.10,0,0],[.15,6.0215,-17.5981],[.20,4.8949,-2.1854],[.25,4.1731,1.3244],[.30,3.5011,1.0888],[.35,3.0336,.8536],[.40,2.6283,.6483],[.50,1.9867,.3437],[.60,1.5571,.1370],[.80,.9284,-.2432],[1.0,.6355,-.3121],[1.5,0,0]];
           let dx=0,dy=0;for(let i=1;i<settle.length;i++)if(t>=settle[i-1][0]&&t<settle[i][0]){const[a,x0,y0]=settle[i-1],[b,x1,y1]=settle[i],k=(t-a)/(b-a);dx=x0+(x1-x0)*k;dy=y0+(y1-y0)*k;break;}
           ctx.save();ctx.translate(dx*1.10,dy*1.08/Math.max(.05,power(t).sy));drawBoot(t);ctx.restore();

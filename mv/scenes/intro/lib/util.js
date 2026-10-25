@@ -61,7 +61,7 @@ export function offscreen(w, h) {
   return c;
 }
 
-// Grey "paper" background with a soft radial falloff, measured off the original frames
+// Grey "paper" background with a soft radial falloff
 // (centre plateau ~245, corners ~223). Returns a canvas to blit each frame.
 export function paperBackground(W, H, { inner = 245, outer = 223, r0 = 470, r1 = 1100, cx = 990, cy = 540 } = {}) {
   const c = offscreen(W, H);

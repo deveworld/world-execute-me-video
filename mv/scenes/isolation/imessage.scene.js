@@ -69,8 +69,8 @@ export default {
     return {
       render(t) {
         wipe(root, t, T0, [739, 525, 391, 141]);
-        // The title is a shared element: it keeps gliding from the WhatsApp title's place (measured left
-        // edge per frame, see lib/chat.js; the last ~2 px of drop are proportional to the remaining x).
+        // The title is a shared element: it keeps gliding from the WhatsApp title's place (left edge per
+        // frame in lib/chat.js; the last ~2 px of drop are proportional to the remaining x).
         const back = 424 - titleGlide(t);
         el.title.style.transform = back > 0 ? `translate(${(-back).toFixed(2)}px, ${(-back / 34).toFixed(2)}px)` : '';
         el.left.style.opacity = String(wordAlpha(t, 116.542, .083, .2));
@@ -81,14 +81,14 @@ export default {
         el.today0.style.opacity = String(softFade(t, 117.327, 117.377));
         el.named.style.opacity = String(softFade(t, 117.343, 117.407));
         el.today1.style.opacity = String(softFade(t, 117.381, 117.435));
-        // the old bubble fades out while blurring; its text is gone a frame earlier (measured 7045-7048)
+        // the old bubble fades out while blurring; its text is gone a frame earlier
         el.oldmsg.style.opacity = String(softFade(t, 117.4, 117.475));
         el.oldtxt.style.opacity = String(softFade(t, 117.405, 117.45));
         el.oldbub.style.filter = t > 117.4 ? `blur(${(6 * clamp((t - 117.4) / 0.075)).toFixed(2)}px)` : '';
-        for (let i = 0; i < 4; i++) el[`n${i}`].style.opacity = String(softFade(t, 117.44 + i * 0.0285, 117.5 + i * 0.0285));   // measured stagger ~1.7 frames
+        for (let i = 0; i < 4; i++) el[`n${i}`].style.opacity = String(softFade(t, 117.44 + i * 0.0285, 117.5 + i * 0.0285));   // ~1.7 frames apart
         el.last.style.opacity = String(softFade(t, 117.633, 117.767));
         const age = Math.max(0, t - 117.5333);
-        el.iso.style.opacity = String(clamp((t - 117.539) / .05));   // measured: .22, .55, .89, 1 on frames 7053-7056
+        el.iso.style.opacity = String(clamp((t - 117.539) / .05));
         const scale = 1 - .225 * Math.exp(-20 * age);
         el.iso.style.transform = `scale(${scale})`;
         el.caret.style.visibility = caretOn(t) ? 'visible' : 'hidden';

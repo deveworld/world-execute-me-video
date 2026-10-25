@@ -39,7 +39,7 @@ export const wordAlpha = (t, at, dur = 0.083, dim = 0.2) => (at == null ? 1 : di
 export { clamp };
 
 // Shared-element title glide from the WhatsApp header to the iMessage title (116.03 - 116.25): the title's
-// left edge measured frame by frame on the original (frames 6962-6975), 452 -> 876 px. titleGlide(t) returns
+// left edge per frame (6962-6975), 452 -> 876 px. titleGlide(t) returns
 // the x offset travelled so far, linearly interpolated between frames; titleEase is the same as a fraction.
 const GLIDE_X = [0, 88, 168, 235, 287, 327, 356, 378, 394, 406, 415, 420, 423, 424];
 export const titleGlide = (t) => {
@@ -52,7 +52,7 @@ export const titleGlide = (t) => {
 export const titleEase = (t) => titleGlide(t) / 424;
 
 // The other shots' titles start at the previous shot's title position and settle with the same power
-// ease (measured: Discord from chat1, IRC from Discord). Returns the remaining fraction of the offset.
+// ease (Discord from chat1, IRC from Discord). Returns the remaining fraction of the offset.
 export const titleSettle = (t, f0, frames) => Math.pow(1 - clamp((t * 60 - f0) / frames), 4.3);
 
 // Vertical metrics (hhea/typo ascent, descent in em) used to put a text's baseline at an exact y.

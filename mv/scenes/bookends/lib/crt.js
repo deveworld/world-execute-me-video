@@ -1,9 +1,9 @@
 // CRT tube compositor shared by the intro (0–7.33) and the ending (206.98–212.3).
 //
-// Everything here was measured on the original frames:
+// Tube model:
 //  * The tube is the whole 1920x1080 "source" frame seen through a radial warp
 //    (output px -> source px):  s = c + 960·u·(1 + k·r²), r² = u² + (q·v)², u,v = (p - c)/960.
-//    The glass edge is exactly the source frame border (rounded corners r≈66).
+//    The glass edge is the source frame border (rounded corners r≈66).
 //  * The lit picture is the flat content frame scaled by 0.9507 into the source frame
 //    at (47.64, 26.89) -> content coords = (s - T) / S.
 //  * Scanlines: period 5.0 content px (bright rows at y ≈ 2.60 + 5n); aperture mask: 3 output px.
@@ -158,7 +158,7 @@ void main() {
   vec3 beam = vec3(1.0) * uBeam.x * (beamCore + beamGlow);
   if (uNativeBeam > 0.5) {
     // The source shutdown beam is raster-horizontal: four bright rows, an undershoot
-    // at either edge, then the measured phosphor/reconstruction halo.
+    // at either edge, then the phosphor/reconstruction halo.
     float yy = abs(p.y - 540.0);
     float span = 1.0 - smoothstep(-0.5, 0.8, bx);
     float core = (1.0 - smoothstep(1.9,2.1,yy)) * span;

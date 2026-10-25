@@ -8,8 +8,7 @@ const T0 = 6844 / 60; // wipe start (114.0667)
 // XP "Luna" window frame: outer box, title bar, client area.
 function win(x, y0, w, h0, title, titleBase, titleX) {
   const tb = 54; // title bar height incl. top edge
-  // measured: the frame and title bar sit 2 px lower than the original layout put them (top edge at
-  // 548 / 154, title bar bottom at 601 / 207), while the client area keeps its top/bottom.
+  // frame top edge at 548 / 154, title bar bottom at 601 / 207; the client area keeps its own top/bottom.
   const y = y0 + 2, h = h0 - 2;
   return `
   <div style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:9px 9px 0 0;

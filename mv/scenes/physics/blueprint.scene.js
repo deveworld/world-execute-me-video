@@ -58,7 +58,7 @@ function pointAt(pts, s) {
 
 // ---------------------------------------------------------------- static layers
 function drawBackground(ctx) {
-  // radial falloff measured on the reference: flat to r=560, then ~-3.3 (blue) per 60 px
+  // radial falloff: flat to r=560, then ~-3.3 (blue) per 60 px
   const g = ctx.createRadialGradient(960, 540, 0, 960, 540, 1100);
   g.addColorStop(0, 'rgb(33,37,164)');
   g.addColorStop(0.509, 'rgb(33,37,164)');
@@ -69,8 +69,8 @@ function drawBackground(ctx) {
   g.addColorStop(1, 'rgb(30,33,146.5)');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
-  // Stroke a single grid layer before adding it to the blue paper: crossings have
-  // the brighter line's intensity, rather than the sum of two independent strokes.
+  // Stroke a single grid layer before adding it to the blue paper: crossings then take
+  // the brighter line's intensity.
   const grid = document.createElement('canvas');
   grid.width = W; grid.height = H;
   const gc = grid.getContext('2d');

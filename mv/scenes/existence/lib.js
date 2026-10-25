@@ -1,4 +1,4 @@
-// Shared helpers for the `existence` segment (not a scene: no *.scene.js suffix).
+// Shared helpers for the `existence` segment.
 export const NS = 'http://www.w3.org/2000/svg';
 
 export const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));

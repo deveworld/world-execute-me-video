@@ -23,10 +23,10 @@ Rendering the preview thumbnails (and anything else in `mv/tools/render.mjs`) ne
 
 The song and the original video are not part of this repository.
 
-- **Sound in the player:** if `qV0aezH6Aj8.mp4` sits next to `mv/` and `player/`, `npm run build` extracts its soundtrack and the player uses that file. Otherwise the player plays [Mili's official upload](https://www.youtube.com/watch?v=ESx_hy1n7HA) through the YouTube embed. Its audio lines up with the remake at 0 ms offset.
+- **Sound in the player:** if `qV0aezH6Aj8.mp4` sits next to `mv/` and `player/`, `npm run build` extracts its soundtrack and the player uses that file. Otherwise the player plays [Mili's official upload](https://www.youtube.com/watch?v=ESx_hy1n7HA) through the YouTube embed.
 - **Rendering with sound:** `mv/tools/render.mjs` reads `mv/audio/song.m4a`. Pass `--no-audio` without it.
 - **Comparison tools:** the scripts in `mv/tools/` that compare against the original expect `qV0aezH6Aj8.mp4` one level above `mv/`.
 
 ## Credits
 
-"world.execute(me);" is by Mili. The music video being reproduced is the fan MV by Kaito Sugimura. This project is not affiliated with either.
+"world.execute(me);" is by Mili. The music video being reproduced is the fan MV by Kaito Sugimura.

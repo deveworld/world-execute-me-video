@@ -1,12 +1,12 @@
 // 162.600–169.9583333333 · "If I can, if I can give them all the EXECUTION / Then I can, then I can be
 // your only EXECUTION" written word by word at the left of the htop screen. Words pop in on
-// the frames read off the original (no fade). The first "If" appears over the title card.
+// the original's frames, without a fade. The first "If" appears over the title card.
 import { guarded } from './lib/ctx2d.js';
 const F = (f) => (f - 0.5) / 60;
 
 const SMALL = '400 60px "Fira Code"';
 const BIG = '600 115px "Fira Code"';
-const WHITE = '#f2f6ff'; // V3: measured — the lyric white is slightly blue
+const WHITE = '#f2f6ff'; // the lyric white is slightly blue
 
 // [frame the word appears, text, column, baseline line index]
 const LINES = [
@@ -42,7 +42,7 @@ export default {
             ctx.fillStyle = color || line.color || WHITE;
             const x = line.x + col * cell[line.font];
             if (line.font === SMALL && word.includes('l')) {
-              // V3: the original's 'l' has a slab foot (Fira Code's default has a curved tail); traced at 1:1
+              // the original's 'l' has a slab foot (Fira Code's default has a curved tail)
               ctx.fillText(word.replaceAll('l', ' '), x, line.y);
               [...word].forEach((ch, i) => {
                 if (ch !== 'l') return;

@@ -1,8 +1,7 @@
-// Defragmenter: the original's 56x20 semantic tile map is rebuilt from rectangles.
-// Only numerical cell classifications are stored; no raster reference art is loaded.
+// Defragmenter: a 56x20 tile map drawn from rectangles.
 import {clamp,lerp,ease,paperBackground} from './lib/util.js';
 const X=119,Y=312,D=30,S=29;
-// Words pop in whole on these source frames (measured); the line is then backspaced in three
+// Words pop in whole on these source frames; the line is then backspaced in three
 // chunks (frames 7286/7288/7290) before the "Fragments" heading builds up in four stages.
 const WORD_F=[7100,7116,7140,7158,7182,7196,7212,7240,7252,7266];
 const ERASE=[[7286,6],[7288,3],[7290,0]];
@@ -12,7 +11,7 @@ export default{id:'intro/defrag',start:118.33,end:122.05,fonts:['400 64px "VT323
  const states=[];let state=new Uint8Array(Array.from(data.events[0][1],Number));let ei=1;
  for(let f=data.firstFrame;f<=7324;f++){while(ei<data.events.length&&data.events[ei][0]<=f){for(const[i,s]of data.events[ei][1])state[i]=s;ei++;}states.push(state.slice());}
  // Tiles are pre-rendered sprites. The fragmented tile's diagonal is an aliased one-pixel
- // staircase with pale flanks, as in the source (not an anti-aliased stroke).
+ // staircase with pale flanks, as in the source.
  function paintTile(c,s,size){
   c.fillStyle='#fdfdfd';c.fillRect(0,0,size,size);
   c.fillStyle=['#fdfdfd','#595ae2','#acb0f7','#09084b'][s];c.fillRect(1,1,size-2,size-2);
@@ -24,7 +23,7 @@ export default{id:'intro/defrag',start:118.33,end:122.05,fonts:['400 64px "VT323
  function tile(x,y,s,alpha=1,size=S){ctx.save();ctx.globalAlpha*=alpha;ctx.drawImage(sprites[size][s],x,y);ctx.restore();}
  function legendMoving(x,y,size){ctx.fillStyle='#0d0b5a';ctx.fillRect(x,y,size,size);ctx.fillStyle='#141786';ctx.fillRect(x+4,y+4,size-8,size-8);ctx.strokeStyle='#f4f3ff';ctx.lineWidth=1;ctx.strokeRect(x+3.5,y+3.5,size-7,size-7);}
  // Moving block: dark 1 px frame, indigo fill and an inset white ring held between two dark
- // rings (insets 3/4/5 px). The source draws no drop shadow.
+ // rings (insets 3/4/5 px), with no drop shadow.
  function movingActor(x,y,w,h){
   ctx.fillStyle='#1c1892';ctx.fillRect(x,y,w,h);
   ctx.lineWidth=1;const ring=(i,c)=>{ctx.strokeStyle=c;ctx.strokeRect(x+i+.5,y+i+.5,w-2*i-1,h-2*i-1);};

@@ -8,7 +8,7 @@ const T0 = 77.93, T1 = 81.545;
 const CX = 317.5, CY = 540.5;
 const DEG = Math.PI / 180;
 
-// measured outline radius (screen angle, deg -> px), slightly irregular
+// outline radius (screen angle, deg -> px), slightly irregular
 const RAD_TABLE = [[0, 195], [15, 195.5], [30, 195], [45, 195], [60, 193.5], [75, 194], [90, 194.5], [105, 196], [120, 197],
   [135, 196.5], [150, 193.5], [165, 192.5], [180, 192.5], [195, 196.5], [210, 197], [225, 197.5], [240, 196], [255, 194.5],
   [270, 193.5], [285, 194.5], [300, 195], [315, 197.5], [330, 197.5], [345, 195.5], [360, 195]];
@@ -210,7 +210,7 @@ export default {
       if(k===1||k===2)svg('path', { d: hp.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(''), fill: 'none', stroke: '#fff2ec', 'stroke-width': 1.4, 'stroke-opacity': 0.55, 'stroke-linecap': 'round' }, g);
       locules.push({ g, a, b, t: 78.317 + k * 0.1167 });
     }
-    // seeds (layout traced from the reference), revealed in batches sweeping clockwise through each locule
+    // seeds, revealed in batches sweeping clockwise through each locule
     const seeds = [];
     const gHalo = svg('g', {}, gTom);
     const gSeed = svg('g', {}, gTom);

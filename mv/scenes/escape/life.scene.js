@@ -1,6 +1,6 @@
 // Conway's Game of Life on a 96x54 dot grid: Gosper gun, pulsars, pentadecathlon, spaceships and the
 // escaped particle as a highlighted glider. New-born cells are blue, survivors lavender, dying cells fade.
-// A generation per 16th note; gliders are injected at the edges exactly where the original injects them.
+// A generation per 16th note; gliders enter at the same edge cells as in the original.
 // All generations are precomputed in create(); render(t) only looks them up.
 import { SPB, clamp, resetCtx } from './lib/util.js';
 import { GEN0, INJECT, SPECIAL0 } from './life/data.js';
@@ -89,7 +89,7 @@ export default {
     }
     const rgb = (a) => `rgb(${a[0] | 0},${a[1] | 0},${a[2] | 0})`;
     // The reference has a one-pixel highlight and dark undershoot at each cell edge.
-    // Generate that edge response from the rounded rectangle; no captured texture is used.
+    // Generate that edge response from the rounded rectangle.
     function cellSprite(colour) {
       const c = document.createElement('canvas'); c.width = c.height = PITCH;
       const g = c.getContext('2d');
@@ -119,8 +119,7 @@ export default {
         const cur = gens[k], prev = k > 0 ? gens[k - 1] : null;
         ctx.drawImage(grid, 0, 0);
 
-        // The source's dying-cell RGB follows a curved decay, rather than a linear blend.
-        // Fitted to cell-interior samples across all 30 generation changes at 60 fps.
+        // Dying cells fade along a curved RGB decay.
         if (prev) {
           const fade = Math.pow(clamp(1 - (t - tk - 0.001) / 0.104), 1.8);
           if (fade > 0) {
@@ -133,7 +132,7 @@ export default {
           ctx.globalAlpha = 1;
         }
 
-        // blue haze around the escaped glider (decays over ~0.6 s, measured from the gaps around it)
+        // blue haze around the escaped glider (decays over ~0.6 s)
         const t1 = T0 + STEP;   // generation 1
         const glow = GLOW_A * (t < t1 ? 1 - 0.8 * (t - T_START) : 0.63 * Math.exp(-(t - t1) / GLOW_TAU));
         if (glow > 0.01) {

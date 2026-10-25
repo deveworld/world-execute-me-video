@@ -1,7 +1,7 @@
 // Verse 3 — "If I'm a sine wave / Then you can sit on all my TANGENTS" (36.95–41.4 s), plus the
 // curve itself until the end of the segment (the sine → limit-curve morph of verse 4 happens here).
-// θ(t) for the trace and the four "rides" was read frame by frame off the source (the radius angle
-// in the unit circle); the jumps are exponential approaches (τ = 60 ms) that start on the beat.
+// θ(t) for the trace and the four "rides" is the radius angle in the unit circle; the jumps
+// are exponential approaches (τ = 60 ms) that start on the beat.
 import { clamp, lerp, prog, ease, marker } from './draw.js';
 import { el } from './text.js';
 import { U, CIRC, PLOT, SERIF, MONO } from './const.js';
@@ -60,13 +60,13 @@ export function circleDeg(t) {
   return rideDeg(t);
 }
 
-// sine → limit curve (verse 4): each x starts later the further right it is (read off the source).
+// sine → limit curve (verse 4): each x starts later the further right it is.
 const LIM_C = 0.0786;
-// soft floor at x→0 (≈ −10 instead of a hard −3 clamp): the dive at the y-axis reaches the bottom
-// as fast as the source's (41.48–41.53) and has no flat hook at its foot
+// soft floor at x→0 (≈ −10): the dive at the y-axis reaches the bottom by 41.53, with no flat hook
+// at its foot
 const limitV = (xn) => 1 - LIM_C / Math.sqrt(xn * xn + 0.00715 * 0.00715);
 const morphK = (xn, t) => {
-  const t0 = 41.415 + 0.26 * Math.max(xn, 0);   // fitted on 11 columns × 46 frames
+  const t0 = 41.415 + 0.26 * Math.max(xn, 0);
   return ease.inOutSine(clamp((t - t0) / (0.45 - 0.05 * xn)));
 };
 export function curveV(th, t) {
@@ -143,7 +143,7 @@ export function createSine({ root }) {
 
   // the tangent segment through the curve point at θ: 315 px back, 465 px ahead, 60 px end fades,
   // clipped to the plot (x 600…1800). Below the plot it also fades out between y 895 and 935
-  // (measured on the 240° ride, where the source's tangent stops ~215 px ahead).
+  // (on the 240° ride the tangent ends ~215 px ahead).
   const yFade = (y) => clamp((935 - y) / 40);
   function tangentLine(ctx, th, alpha, width = 1.25, back = 315, ahead = 465) {
     if (alpha <= 0) return;
@@ -203,14 +203,13 @@ export function createSine({ root }) {
   }
 
   function drawKeyword(t, th) {
-    const a = 1 - ease.outQuad(prog(t, 40.915, 0.14));   // measured fade-out
+    const a = 1 - ease.outQuad(prog(t, 40.915, 0.14));   // fade-out
     if (t < 40.288 || a <= 0) { kw.style.display = 'none'; return; }
     const x = X(th), y = Y(Math.sin(th));
     const [ux, uy] = tangentDir(th);
     const nx = uy, ny = -ux;               // normal pointing up-right of the line
     const ox = x + ux * 36 + nx * 8, oy = y + uy * 36 + ny * 8;
-    // the whole word fades in over ~4 frames (ink 0.21 / 0.53 / 0.88 / 1.0 at 40.300–40.350,
-    // measured above the tangent so the moving line doesn't pollute it)
+    // the whole word fades in over ~4 frames (ink 0.21 / 0.53 / 0.88 / 1.0 at 40.300–40.350)
     const inK = Math.pow(clamp((t - 40.288) / 0.05), 1.2);
     kw.style.display = '';
     kw.style.opacity = (a * inK).toFixed(3);
@@ -237,10 +236,10 @@ export function createSine({ root }) {
   // ---------- frame ----------
   function draw(ctx, t) {
     if (t < 33.45) return;
-    // circle side leaves for the limit verse (measured): the ring shrinks about its centre
+    // circle side leaves for the limit verse: the ring shrinks about its centre
     // (r 191 → 157, accelerating) and fades 41.0–41.42; the crosshair retracts onto it; the radius,
     // θ arc and point fade a little later and faster.
-    // radius fitted per frame on the source (41.0–41.37, max error 0.45 px)
+    // radius per frame (41.0–41.37)
     const sc = 1 - 0.1633 * Math.pow(Math.max(0, t - 40.985) / 0.36, 1.4);
     const out = 1 - ease.inQuad(prog(t, 41.0, 0.42));
     const handOut = 1 - prog(t, 41.07, 0.3);

@@ -1,4 +1,4 @@
-// Arecibo message: every square, glyph, scan and streak is drawn from numeric geometry.
+// Arecibo message: squares, glyphs, the scan line and light streaks.
 import DATA from './arecibo-data.js';
 import MOTION from './arecibo-motion.js';
 import HEART_PIGMENT from './heart-pigment.js';
@@ -6,15 +6,15 @@ import CURVES from './arecibo-curves.js';
 const W=1920,H=1080,P=23,X=131,Y=283,SPB=60/130;
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,k)=>a+(b-a)*k;
-// Per-frame measured pigment curve (held at both ends).
+// Per-frame pigment curve (held at both ends).
 function curve(name,t){const c=CURVES[name],x=t*60-c.f0,n=c.rgb.length-1;if(x<=0)return c.rgb[0];if(x>=n)return c.rgb[n];const i=Math.floor(x),k=x-i;return c.rgb[i].map((v,j)=>v+(c.rgb[i+1][j]-v)*k);}
-// Squares briefly swell to close their gaps when a label lands (frames measured on the original).
+// Squares briefly swell to close their gaps when a label lands.
 const FLASH={globe:{1453:2,1454:2},comp:{1564:2,1565:2},person:{1674:2,1675:2,1676:2,1677:.7},
  // reprise: the blocks swell when the equations start typing, the heart when its last column lands,
- // the person when the dissolve starts (frames measured on the original)
+ // the person when the dissolve starts
  rblk:{11838:2},rheart:{12115:2},rperson:{12336:2,12337:1.6}};
 const flashAt=(g,t)=>FLASH[g][Math.round(t*60)]||0;
-// Measured person scale while it collapses into the single point (bbox height / 341 px).
+// Person scale while it collapses into the single point (bbox height / 341 px).
 const SHRINK=[[28.8167,1],[28.8333,.94],[28.85,.854],[28.8667,.775],[28.8833,.70],[28.9,.627],[28.9167,.56],[28.9333,.499],[28.95,.443],[28.9667,.39],[28.9833,.343],[29,.302],[29.0167,.264],[29.0333,.232],[29.05,.202],[29.0667,.173],[29.0833,.15],[29.1,.129],[29.1167,.111],[29.1333,.097],[29.15,.085],[29.1667,.071],[29.1833,.059],[29.2,.05],[29.2167,.039],[29.2333,.03]];
 // Soft left-to-right fade of the bitmap labels when the message dissolves.
 const WIPE_W=330;
@@ -35,7 +35,7 @@ const heartPath=new Path2D();
 }heartPath.closePath();}
 export function drawHandoffHeart(ctx,alpha=1){
  ctx.save();ctx.globalAlpha=alpha;ctx.lineJoin='round';ctx.lineCap='round';
- // faint additive bloom, then the thin near-white outline (no rim, no dark halo)
+ // faint additive bloom, then the thin near-white outline
  ctx.save();ctx.globalCompositeOperation='lighter';ctx.filter='blur(3.1px)';ctx.strokeStyle='rgba(150,155,230,0.018)';ctx.lineWidth=2.58;ctx.stroke(heartPath);ctx.restore();
  ctx.strokeStyle='rgb(250,250,255)';ctx.lineWidth=1.0;ctx.stroke(heartPath);
  // the lavender centre dot exactly as love/heart leaves it
@@ -79,7 +79,7 @@ function motionAt(t,rep){const a=rep?MOTION.reprise:MOTION.intro;if(t<=a[0][0])r
 function heartPigment(t){const a=HEART_PIGMENT;if(t<=a[0][0])return C.W;if(t>=a.at(-1)[0])return a.at(-1).slice(1);let lo=0,hi=a.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(a[m][0]<=t)lo=m;else hi=m;}const k=(t-a[lo][0])/(a[hi][0]-a[lo][0]);return a[lo].slice(1).map((v,i)=>lerp(v,a[hi][i+1],k));}
 function cellSize(t,rep){const start=rep?193.6:22.366667,age=t-start;if(age<.45)return table(age,rep?[[0,11.5],[.1,10.3],[.25,7.85],[.4,6.75],[.45,6.35]]:[[0,15],[.033333,14.2],[.1,11.6],[.166667,10.1],[.233333,8.8],[.383333,6.8],[.45,6.4]]);const ageBeat=((t-.212)%SPB+SPB)%SPB;return table(ageBeat,[[0,9.2],[.033333,8.7],[.066667,8.1],[.166667,6.9],[.316667,5.9],[.461538,5.6]]);}
 function beveledCell(ctx,x,y,q,col){const left=x-(q-1)/2,top=y-(q-1)/2;ctx.globalAlpha=1;ctx.fillStyle='#00020b';ctx.fillRect(left-1,top-1,q+2,q+2);const grad=ctx.createLinearGradient(0,top,0,top+q);grad.addColorStop(0,rgb(col.map(v=>v*1.035)));grad.addColorStop(.48,rgb(col));grad.addColorStop(1,rgb(col.map(v=>v*.98)));ctx.fillStyle=grad;ctx.fillRect(left,top,q,q);const bevel=.98+.19*clamp((15-q)/4);ctx.strokeStyle=rgb(col.map(v=>v*bevel));ctx.lineWidth=.8;ctx.strokeRect(left+.4,top+.4,Math.max(0,q-.8),Math.max(0,q-.8));ctx.fillStyle=rgb(col.map(v=>v*1.085));ctx.fillRect(left+.6,top+.4,Math.max(0,q-1.2),.8);ctx.fillStyle=rgb(col.map(v=>v*.945));ctx.fillRect(left+.6,top+q-1.2,Math.max(0,q-1.2),.8);}
-// Measured scan line: a 2 px near-white core with a ~7 px lavender glow, spanning the panel.
+// Scan line: a 2 px near-white core with a ~7 px lavender glow, spanning the panel.
 function scan(ctx,x,a=1){if(x<114||x>1807)return;ctx.save();ctx.globalAlpha=a*.13;ctx.fillStyle='#c8c8f0';ctx.fillRect(x-7,273,14,527);ctx.globalAlpha=a*.16;ctx.fillRect(x-3.5,273,7,527);ctx.globalAlpha=a;ctx.shadowColor='#e9e6ff';ctx.shadowBlur=6;ctx.fillStyle='#fbfbfe';ctx.fillRect(x-1,273,2,527);ctx.restore();}
 function columnScan(t,on){
  // Line held at a panel boundary, then follows the column reveals.
@@ -88,7 +88,7 @@ function columnScan(t,on){
 }
 // The visible reveal line sits on the boundary of the last revealed column (it jumps per column).
 function columnLine(t,on){let idx=-1;for(let i=0;i<on.length;i++)if(t>=on[i])idx=i;return idx<0?119:X+P*(idx+.5);}
-// Dissolve sweep measured on the original: starts at x=131 and moves 7272 px/s.
+// Dissolve sweep: starts at x=131 and moves 7272 px/s.
 const SWEEP_V=7272,sweep0=rep=>rep?205.5986:28.3624;
 // A light streak lifting out of a swept cell (age in s since the sweep passed).
 function streak(ctx,x,y,am,w0,core='rgba(242,242,255,1)',base=3.3){
@@ -131,7 +131,7 @@ export function createArecibo(env){
    if(t>=24.2163)bitmapText(ctx,'me',825.333,203.333,23/3,rgb(curve('me',t)),1-clamp((t-28.425)/.076));
    if(t>=26.0663)bitmapText(ctx,'machine',1124.333,203.333,23/3,rgb(curve('machine',t)),1-clamp((t-28.4825)/.084));
   }else if(!ending){
-   // Both lines are typed together at the measured 34.5 characters per second.
+   // Both lines are typed together at 34.5 characters per second.
    const n=Math.floor(Math.max(0,t-197.2547)*34.5);
    draw('(x^2+y^2-1)^3-x^2*y^3=0'.slice(0,n),190,226,23/6,'#ececf8');
    draw('me.execute(world);'.slice(0,n),190,824,23/6,'#ebecf7');
@@ -174,7 +174,7 @@ export function createArecibo(env){
    let col=C[ch];
    // Number and binary baselines pulse into muted lavender between beats.
    if((!rep&&(j===8||j===18)&&i<25)||(rep&&(j===9||j===20)&&i<26))col=mix(C.D,C.W,motion[5]);
-   // Measured pigment curves: the globe fades white -> lavender and pulses, the monitor and the
+   // Pigment curves: the globe fades white -> lavender and pulses, the monitor and the
    // person flash when their labels land, and the person warms from white to skin tone.
    if(!rep&&ch==='L'&&i<41)col=t<24.1999?C.W:curve('globe',t);
    if(ch==='P')col=personRGB||(rep?(t<205.55?C.W:curve('rperson',t)):(t<27.8999?C.W:curve('person',t)));
@@ -192,7 +192,7 @@ export function createArecibo(env){
   }
   if(humanShrink){
    // The cells merge into one glowing solid silhouette as it shrinks, ending as a bright oval point.
-   // (measured: the collapsing figure reads as a more saturated peach than the resting cells)
+   // (the collapsing figure is a more saturated peach than the resting cells)
    const pc=rgb(mix(curve('person',t),[255,206,176],.45*clamp((1-ss)/.3))),q=19+4*clamp((1-ss)/.42),body=new Path2D();
    for(let j=0;j<23;j++)for(let i=61;i<70;i++)if(rows[j][i]==='P')body.rect(X+P*i-q/2,Y+P*j-q/2,q,q);
    // Small sizes close the one-cell gaps (arms merge with the body) like a low-resolution raster: a
@@ -214,12 +214,12 @@ export function createArecibo(env){
    const hx=columnScan(t,on);ctx.save();ctx.beginPath();ctx.rect(Math.max(0,hx),0,1920,1080);ctx.clip();drawHandoffHeart(ctx);ctx.restore();
   }
   if(!ending){
-   // (measured: the reprise scan line is dimmed to ~half while it waits at a panel boundary)
+   // (the reprise scan line is dimmed to ~half while it waits at a panel boundary)
    if(rep&&t<205.5986)scan(ctx,columnLine(t,on),(t<194.4||(t>=197.4&&t<198.9)||(t>=202.0167&&t<202.8333))?.5:1);
    if(dissolve&&t<dissolveT+.235)scan(ctx,131+(t-dissolveT)*SWEEP_V);
    if(!rep&&t<28.38){
     // Thin leading bars at the two symmetric reveal fronts.
-    // (measured: only the rightward front, columns 32-65, leaves a fading bar on the column centre)
+    // (only the rightward front, columns 32-65, leaves a fading bar on the column centre)
     for(let i=32;i<66;i++)if(t+1e-4>=on[i]&&t<on[i]+.1&&Math.abs(on[i]-on[i-1])>1e-3)scan(ctx,X+P*i,.24*Math.exp(-Math.max(0,t-on[i])/.075));
    }
   }

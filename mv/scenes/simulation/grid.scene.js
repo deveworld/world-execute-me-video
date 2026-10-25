@@ -12,7 +12,7 @@ const DRAW = 0.05;                    // border draw-on duration
 const LIGHT = 'rgb(188,188,188)', DARK = 'rgb(46,36,150)', MARK = 'rgb(165,165,165)';
 const CAPTION_TEXT = '#151515', TEXT = '#121212', TITLE_TEXT = '#212121';
 
-// background (fitted to the reference): RGB polynomial vignette
+// background: RGB polynomial vignette
 const BG = [
   [245.88, -10.30, 0.21, -0.17, -1.53, -2.75, 0.01, 0.01],
   [246.34, -11.10, -0.22, 0.12, -2.06, -1.90, 0, 0.23],

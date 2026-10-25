@@ -4,7 +4,7 @@
 
 Each family lands in its own folder with a family.txt holding the CSS family name.
 The dev server turns every folder into @font-face rules on the fly (/assets/fonts/fonts.css),
-so a family is usable by name from any scene as soon as this finishes — no shared file to edit.
+so a family is usable by name from any scene as soon as this finishes.
 """
 import json, os, re, sys, urllib.request
 

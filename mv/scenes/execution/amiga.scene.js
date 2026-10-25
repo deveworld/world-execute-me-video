@@ -21,7 +21,8 @@ export default {
     const crt = createCRT(root, env, {
       k: [-0.02, -0.0747], distort: 1, glass: GLASS.glass, radius: GLASS.radius, kg: GLASS.kg,
       rim: GLASS.rim, rimRadius: GLASS.rimRadius, kr: GLASS.kr, outside: GLASS.outside,
-      rimTop: [13, 13.7, 16.1].map((v) => v / 255), // V3: low-order shading fitted to the original (orig ≈ ours × field), per channel
+      rimTop: [13, 13.7, 16.1].map((v) => v / 255),
+      // per-channel low-order shading field: the original ≈ ours × field
       shade: [[1.2953, 1.0414, 1.016], [-0.0393, -0.0532, -0.0165], [-0.3956, -0.0026, 0.0328], [-0.265, -0.248, -0.3435], [-2.6583, -0.1988, -0.0261], [-4.9997, -3.5933, -1.9305]],
       rimBot: [9.1, 9.6, 11.9].map((v) => v / 255),
       scan: [4.9205, 0.348, 1.2080], mask: [0, 3, 3], monoScan: 1,
@@ -42,7 +43,7 @@ export default {
       rect(153, 64, 33, 28, INK); rect(158, 69, 23, 18, WHITE); rect(165, 74, 9, 8, INK);
       drawBitmapText(ctx, TOPAZ, 'New CLI', 200.5, 57.2, CW, CH * 0.95, INK);
       // depth gadgets (right of the title)
-      // V3 (measured, mapped back through the barrel): each is a filled window behind a hollow one;
+      // each is a filled window behind a hollow one;
       // left gadget hollow top-left / filled bottom-right, right gadget the other way round.
       rect(1671, 74, 30, 20, INK); rect(1656, 64.4, 31, 19, INK); rect(1662.4, 69.7, 17.3, 9.4, WHITE);
       rect(1718.3, 64, 30.5, 20, INK); rect(1732, 73.5, 30.5, 20, INK); rect(1738.1, 78.8, 18.3, 9.5, WHITE);

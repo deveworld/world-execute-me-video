@@ -2,9 +2,9 @@
 // ball drop (r 0.45 m, g 9.81, e 0.50) -> Amiga Boing checker. Drawn per pixel in content
 // coordinates (1920x1080, y down) into the CRT content buffer.
 //
-// Measured on the original (content space):
+// Geometry (content space):
 //  * room: pinhole camera, principal point (1333.55, 328.32), f = 1594.1 px, units = grid cells,
-//    floor y = -4.013, back wall z = 14.833 (rms 0.6 px over all grid lines)
+//    floor y = -4.013, back wall z = 14.833
 //  * sphere: orthographic, centre (1344.0, 396.4) r 355.6 -> rests at (1342.4, 601.6) r 354.8;
 //    16 x 8 facets, axis tilt 25.9° az 318.4°, meridian phase 1.25°, spin -97.5°/s from the drop
 //  * drop 205.2 px, g = 9.81 m/s² with r = 0.45 m, restitution 0.5, starts at t = 5.5143
@@ -13,7 +13,7 @@ const FS = `#version 300 es
 precision highp float;
 uniform float uAspect;     // silhouette stretch factor ...
 uniform float uStretch;    // ... along this screen direction (radians, y down)
-uniform float uWire;       // measured wire brightness over time
+uniform float uWire;       // wire brightness over time
 uniform vec3 uSph;         // centre x, y (content px), radius px
 uniform vec4 uAnim;        // x outline arc (0..1), y reveal (bands, 0..8), z room progress, w checker wipe Y
 uniform vec4 uAnim2;       // x shading, y unused, z shadow, w room fill
@@ -30,7 +30,7 @@ const vec3 FLOOR_LINE = vec3(0.50, 0.51, 0.68);
 const vec3 WALL_BG = vec3(0.056, 0.060, 0.083);
 const vec3 FLOOR_BG = vec3(0.10, 0.102, 0.135);
 const vec3 BG = vec3(0.016, 0.016, 0.02);
-const vec3 LAV = vec3(0.353, 0.362, 0.7465);   // R,G raised to the measured facet colour
+const vec3 LAV = vec3(0.353, 0.362, 0.7465);   // R,G raised to the facet colour
 const vec3 WHITE = vec3(0.707690, 0.709329, 0.725293);
 
 float lineCov(float v, float halfw) {
@@ -66,7 +66,7 @@ void main() {
       float yw = pw.y + HC, xw = pw.x;
       float idx = floor(xw + 0.5);
       float hv = fract(sin(idx * 12.9898 + 4.1) * 43758.5453);
-      // verticals rise from the junction, roughly left first (measured frame by frame)
+      // verticals rise from the junction, roughly left first
       float grow = pow(clamp((T - 5.318 - 0.006 * clamp((xw + 6.0) / 13.5, 0.0, 1.0) - 0.004 * hv) / 0.049, 0.0, 1.0), 1.6) * 7.6;
       float cv = lineCov(gridDist(xw), 0.95) * step(yw, grow);
       float jdx = floor(yw + 0.5);
@@ -79,7 +79,7 @@ void main() {
       float grow = clamp((T - 5.324 - 0.006 * clamp((xf + 9.0) / 18.0, 0.0, 1.0)) / 0.075, 0.0, 1.0) * 12.0;
       float cv = lineCov(gridDist(xf), 0.95) * step(kf, grow);
       float kdx = floor(kf + 0.5);
-      // measured: each floor row is drawn left to right across the panel in ~0.062 s, rows 0.0135 s apart
+      // each floor row is drawn left to right across the panel in ~0.062 s, rows 0.0135 s apart
       float fr = clamp((T - 5.3495 - 0.0135 * (kdx - 1.0)) / 0.062, 0.0, 1.0);
       float ch = lineCov(gridDist(kf), 0.95) * step(pc.x, 860.0 + fr * 1045.0) * step(0.5, kf) * step(0.001, fr);
       cov = max(max(cv, ch), junction * step(xf, jr));
@@ -96,7 +96,7 @@ void main() {
   }
 
   // ---------- sphere (orthographic) ----------
-  // Measured: the silhouette is stretched ~2% radially away from the frame centre (perspective-like).
+  // The silhouette is stretched ~2% radially away from the frame centre (perspective-like).
   vec2 dq = pc - uSph.xy;
   float cst = cos(uStretch), snt = sin(uStretch);
   float su = (dq.x * cst + dq.y * snt) / uAspect, sv = -dq.x * snt + dq.y * cst;
@@ -167,7 +167,7 @@ export function bounceHeight(ts, h0, g, e) {
 }
 
 export const SIM_T0 = 5.5143;
-// Wire brightness relative to WIRE, measured on the original (median wire pixel): slow fade, a flash
+// Wire brightness relative to WIRE: slow fade, a flash
 // when the readout lands (4.85), and a dimmer wireframe once the ball drops.
 const WIRE_GAIN = [[4.0, .975], [4.3, .974], [4.5, .94], [4.7, .9], [4.833, .9], [4.85, 1.137], [4.95, 1.12], [5.0, 1.09], [5.1, 1.026], [5.2, .993], [5.3, .954], [5.5, .948], [5.55, .875], [5.6, .862], [6.0, .845], [6.4, .84]];
 function wireGain(t) { const a = WIRE_GAIN; if (t <= a[0][0]) return a[0][1]; for (let i = 1; i < a.length; i++) if (t < a[i][0]) return a[i - 1][1] + (a[i][1] - a[i - 1][1]) * (t - a[i - 1][0]) / (a[i][0] - a[i - 1][0]); return a[a.length - 1][1]; }
@@ -183,12 +183,12 @@ export function createBoing(crt) {
   const e1 = norm(ref.map((v, i) => v - axis[i] * dp));
   const e2 = cross(axis, e1);
 
-  // Bounce clock (unchanged timing) ...
+  // Bounce clock ...
   const R0 = 355.6;
   const PXM = R0 / 0.45;            // px per metre
   const G = 9.81 * PXM;             // px / s^2
   const DROP = 601.6 - 396.4;
-  // ... and the geometry fitted per frame on the original's wires/facet edges (4.9-7.3 s, 17 frames):
+  // ... and the geometry:
   // centre x 1347.75, y 394.0 -> 605.6, radius 353.75, spin 97.38 deg/s, axis drifting with height.
   const SX = 1347.75, SY0 = 394.0, SY1 = 605.6, SR = 353.75;
 
@@ -198,7 +198,7 @@ export function createBoing(crt) {
     let reveal = 0;
     for (let k = 0; k < 8; k++) reveal += clamp01((t - (4.0167 + k * 0.11667)) / 0.0333);
     const room = t;
-    // measured: the room's panels light up gradually while the grid is being drawn (5.30-5.47)
+    // the room's panels light up gradually while the grid is being drawn (5.30-5.47)
     const fill = table1([[5.30, 0], [5.317, .1], [5.333, .14], [5.35, .29], [5.367, .39], [5.383, .555], [5.4, .665], [5.417, .86], [5.433, .88], [5.45, .97], [5.467, 1]], t);
     const wipeY = t < 6.396 ? -10 : 247 + (t - 6.396) * 3530;
     const shade = clamp01((t - 6.8125) / 0.1);
@@ -207,7 +207,7 @@ export function createBoing(crt) {
     const k = clamp01((DROP - h) / DROP);
     const solid = clamp01((t - 6.396) / 0.12);
     const cx = SX, cy = SY0 + (SY1 - SY0) * k, r = SR;
-    const psi = (1.765 - 97.377 * Math.max(0, t - 5.5172)) * DEG;   // spin fitted on 15 frames (wires + facet edges)
+    const psi = (1.765 - 97.377 * Math.max(0, t - 5.5172)) * DEG;
     return { arc, reveal, room, fill, wipeY, shade, shadow, cx, cy, r, psi, solid };
   }
 

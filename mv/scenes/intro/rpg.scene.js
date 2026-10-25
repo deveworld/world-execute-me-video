@@ -1,4 +1,4 @@
-// Pixel hearts, scanline CRT and RPG dialogue. All pixels are drawn geometrically.
+// Pixel hearts, scanline CRT and RPG dialogue.
 import{clamp,ease}from'./lib/util.js';
 const PAT=['01110001110','11111011111','11111111111','11111111111','11111111111','01111111110','00111111100','00011111000','00001110000','00000100000'];
 export default{id:'intro/rpg',start:122.05,end:125.73,fonts:['400 48px "Press Start 2P"','400 96px "Press Start 2P"'],async create(root,env){const{ctx}=env.canvas(root);const geom=await env.loadJSON('/scenes/intro/lib/late-geometry.json');const lettering=await env.loadJSON('/scenes/intro/lib/precision-lettering.json');const detail=await env.loadJSON('/scenes/intro/lib/precision-actors.json');const timing=await env.loadJSON('/scenes/intro/lib/precision-typing.json');const fragments=detail.fragments.map(([f,items])=>[f,items.map(([i,path,cells,pieces])=>[i,new Path2D(path),cells,pieces])]);

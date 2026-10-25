@@ -1,7 +1,7 @@
 // "Set up our new world / And let's begin the SIMULATION" (11.13–14.98).
-// Isometric voxel island on a lavender backdrop. The heightmap, projection, build waves (two diagonals
-// every ~7 frames), water classes, decoration schedule and the wireframe scan were measured off the
-// original. Lyrics are DOM text in Nabla (colour font) so the extrusion axis (EDPT) can be animated.
+// Isometric voxel island on a lavender backdrop: build waves (two diagonals every ~7 frames), water,
+// decorations and a wireframe scan. Lyrics are DOM text in Nabla (colour font) so the extrusion axis
+// (EDPT) can be animated.
 import { clamp, lerp, ease, rgb } from './lib/util.js';
 
 const FPS = 60;
@@ -12,8 +12,8 @@ const SY = (x, y, z) => TOPY + AY * (x + y) - HZ * z;
 const WATER_Z = 0.5;
 
 // ---------------------------------------------------------------- terrain
-// H[gy][gx], fitted to the 12.18 s frame (before the water and the decorations); cell (1,4) is 1 high
-// (it is only visible during the first build wave, frames 678-683, where the source shows one cube).
+// H[gy][gx] as of 12.18 s (before the water and the decorations); cell (1,4) is 1 high
+// (it is only visible during the first build wave, frames 678-683).
 const H = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
@@ -37,7 +37,7 @@ const WAVE_FRAME = [678, 684, 691, 698, 705, 712, 719, 726];
 const waveOf = (d) => (d <= 5 ? 0 : Math.min(7, Math.floor((d - 6) / 2) + 1));
 const TOWER = [[3, 4], [4, 4]];
 const TOWER_FRAME = 754;
-// drop-in: offset -30 px on the first visible frame, decaying ×0.58 per frame (measured 30/18/10/5/2)
+// drop-in: offset -30 px on the first visible frame, decaying ×0.58 per frame
 const dropOffset = (t, f0) => -30 * Math.pow(0.58, Math.max(0, (t - f0 / FPS) * FPS));
 
 // ---------------------------------------------------------------- decorations
@@ -47,7 +47,7 @@ const TREES = [
   [6, 7, 12.92], [10, 9, 12.92],
 ];
 const HOUSE = { gx: 7, gy: 6, f0: 760 };
-const PEOPLE_TRACKS = [ // measured feet positions (screen px) every 2 source frames from the first frame; held afterwards
+const PEOPLE_TRACKS = [ // feet positions (screen px) every 2 source frames from the first frame; held afterwards
 [778,[[1098,440],[1098,448],[1098,448],[1098,448],[1098,448],[1098,448],[1103,443],[1108,439],[1127,448],[1134,457],[1136,466],[1136,466],[1136,464],[1138,458],[1148,458],[1166,468],[1173,477],[1174,485],[1174,485],[1174,483],[1171,476],[1161,478],[1143,488],[1137,496],[1136,504],[1136,504],[1136,501],[1139,495],[1150,497],[1168,507],[1173,516],[1174,523],[1174,523],[1174,523],[1174,523]]],
 [776,[[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,442],[1397,438],[1381,443],[1368,453],[1364,462],[1364,466],[1364,466],[1363,460],[1358,457],[1342,463],[1329,473],[1326,481],[1326,485],[1326,485],[1325,478],[1320,469],[1302,459],[1291,453],[1288,454],[1288,453],[1288,453],[1287,454],[1280,452],[1262,465],[1255,471],[1255,471]]],
 [776,[[1516,512],[1516,512],[1516,512],[1516,512],[1516,512],[1516,512],[1516,511],[1514,504],[1506,504],[1487,513],[1480,522],[1478,531],[1478,531],[1478,529],[1476,523],[1466,523],[1448,533],[1441,542],[1440,550],[1440,550],[1440,548],[1438,541],[1427,543],[1409,553],[1403,561],[1402,569],[1402,569],[1402,566],[1399,560],[1388,562],[1370,572],[1365,581],[1364,588],[1364,588],[1364,588],[1364,588]]],
@@ -113,7 +113,7 @@ export default {
     }
 
     const detail=await env.loadJSON('/scenes/intro/lib/island-detail.json');
-    // Smooth the measured control polygon before constructing the cloud surface.
+    // Smooth the control polygon before constructing the cloud surface.
     detail.clouds=detail.clouds.map(points=>{for(let k=0;k<2;k++){const q=[];points.forEach((p,i)=>{const n=points[(i+1)%points.length];q.push([.75*p[0]+.25*n[0],.75*p[1]+.25*n[1]],[.25*p[0]+.75*n[0],.25*p[1]+.75*n[1]]);});points=q;}return points;});
     const wireFill=ctx.createPattern(bg,'no-repeat');
 
@@ -351,7 +351,7 @@ export default {
       ctx.restore();
     }
 
-    // Chimney smoke: puffs ride up a fixed column of five slots measured off the wireframe frames
+    // Chimney smoke: puffs ride up a fixed column of five slots
     // (centre and radius per slot); solid mode animates them upward, wire mode shows the outlines.
     const SMOKE = [[1290, 445, 4], [1295, 421.7, 6.3], [1299.7, 398, 7.5], [1303.7, 375, 8.5], [1308, 351, 9.5]];
     const smokeAt = (u) => { const i = Math.min(3, Math.floor(u)), k = u - i, a = SMOKE[i], b = SMOKE[i + 1]; return [lerp(a[0], b[0], k), lerp(a[1], b[1], k), lerp(a[2], b[2], k)]; };
@@ -380,7 +380,7 @@ export default {
       if (alpha <= 0) return;
       const f = t * FPS;
       // quadrants: one closed cell per corner (frames 668..671), then open grids whose lines all
-      // extend to a common length L that eases 1 -> 6 cells (measured: 2.8, 3.85, 4.55, 5.05, 5.45...)
+      // extend to a common length L that eases 1 -> 6 cells
       const fr = Math.round(f);
       const L = fr <= 671 ? 1 : 1 + 5 * (1 - Math.exp(-(fr - 671) / 2.24));
       const full = L > 5.97;
@@ -486,7 +486,7 @@ export default {
         }
       }
       // people stand on top faces; draw after terrain (they are tiny)
-      // three walkers hop cell to cell on the source's 1/8-beat rhythm (feet traced frame by frame, 13.0-14.1 s)
+      // three walkers hop cell to cell on the source's 1/8-beat rhythm
       for (const [f0, pts] of PEOPLE_TRACKS) {
         const u = (t * FPS - f0) / 2;
         if (u < -0.25) continue;
@@ -537,7 +537,7 @@ export default {
             depth = (w.depth ?? EDPT) * ease.outCubic(clamp(k / (w.grow ?? 0.085)));
             if (w.steps) {
               // "Simulation": the face is there at once; the extrusion then deepens in five
-              // equal 16th-note steps, each easing in over ~6 frames (measured frames 842..876).
+              // equal 16th-note steps, each easing in over ~6 frames.
               op = 1;
               const fr = t * FPS;
               depth = w.steps.reduce((d, f0) => d + ease.outQuad(clamp((fr - f0) / 6)) / w.steps.length, 0) * w.depth;

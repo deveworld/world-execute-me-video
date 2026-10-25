@@ -1,4 +1,4 @@
-// Binary inspiral on a deforming space-time lattice. All positions and trails are sought.
+// Binary inspiral on a deforming space-time lattice.
 import { PHASE_KEYS } from './orbit.js';
 import { ORBIT_POINTS } from './orbit_points.js';
 import { STRAIN } from './strain.js';
@@ -59,7 +59,7 @@ export default {
       }
     }
     function trails(t){
-      // Measured trail spirals: per source frame, rho over the lag angle (2 deg steps) in elliptic polar
+      // Trail spirals: per source frame, rho over the lag angle (2 deg steps) in elliptic polar
       // coordinates (the two bodies' trails before the merger; the merged body's spiral and plunge hook after).
       const fr=TRAILS.get(clamp(Math.round(t*60),TRAIL_F0,TRAIL_F1)),runs=new Map();
       for(const [th0i,dir,cxi,cyi,r0,dr,al] of fr){
@@ -70,7 +70,7 @@ export default {
           last=q;px=x;py=y;
         }
       }
-      // after the merger: the spiral's faint third loop (fitted ellipse, measured opacity per 10 deg)
+      // after the merger: the spiral's faint third loop (ellipse, opacity per 10 deg)
       const outer=OUTER.get(Math.round(t*60));
       if(outer){const [ox,oy,orx,ory]=OUTER_LOOP.ell;let px=ox+orx,py=oy,last=-1;
         for(let i=1;i<=180;i++){const a=i*Math.PI/90,x=ox+orx*Math.cos(a),y=oy+ory*Math.sin(a),u=(i-.5)/5,j=Math.floor(u)%36,k=u-Math.floor(u),al=outer[j]*(1-k)+outer[(j+1)%36]*k,q=Math.round(al/20);

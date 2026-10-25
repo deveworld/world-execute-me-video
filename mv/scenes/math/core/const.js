@@ -1,5 +1,5 @@
 // Shared layout, palette, fonts and timing for the four math verses (song 29.23–44.52 s).
-// All coordinates are 1920×1080 px, measured on the original frames.
+// All coordinates are 1920×1080 px.
 
 export const W = 1920, H = 1080;
 
@@ -31,7 +31,7 @@ export const FONT_LOADS = [
   `400 92px ${SERIF}`, `italic 400 92px ${SERIF}`,
 ];
 
-// Typography (fitted against the source with IoU on glyph masks).
+// Typography.
 export const TYPE = {
   mono: { x: 120, base: 188, size: 39.4, weight: 400 },
   serif: { x: 116, base: 279, size: 92, weight: 400, opsz: 32, itWeight: 400, itOpsz: 24, spacing: -1.12 },

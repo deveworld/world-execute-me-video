@@ -1,5 +1,4 @@
 // 74.0583333333–77.93: an eggplant is drawn as a rotating wire mesh while its nutrition label types in.
-// All geometry is procedural; the silhouette and camera parameters were measured from the film.
 import { vignetteCanvas, clamp, lerp } from './lib/common.js';
 import { AXIS, PM, PR, MESH, CALYX, CALYX_LINES } from './eggplant/geom.js';
 
@@ -12,7 +11,7 @@ const BG = [
 const PAPER = '#f4f4f4', BLACK = 'rgb(32,31,36)', PURPLE = 'rgb(68,33,64)', BLUE = 'rgb(65,52,151)';
 const FONT = '"Libre Franklin"';
 const poly = (p, x) => p.reduce((a, v) => a * x + v, 0);
-// The surface profile is a smooth fit to the luma outline, avoiding the video's chroma blocks.
+// The surface profile is a smooth fit to the luma outline (the chroma is blocky).
 const MID = [-7.0250118795e-12, 9.9223365493e-11, 9.8573337324e-7, .0001382298105, -.04209786203, -15.3303777844];
 const RAD = [3.4893153714e-13, -1.7242478841e-10, 5.1076861635e-8, .00002592647341, -.027350728659, 7.16857472169];
 const POLE = -244.56;
@@ -77,7 +76,7 @@ export default {
       if (k <= 0) return;
       ctx.fillStyle = color; ctx.fillRect(x, y, w * clamp(k), h);
     }
-    // Rules and label lines are revealed by a left→right wipe with a quartic ease-out (fitted per element).
+    // Rules and label lines are revealed by a left→right wipe with a quartic ease-out.
     const quart = (k) => 1 - Math.pow(1 - clamp(k), 4);
     const wipe = (t, t0, dur) => (t <= t0 ? 0 : quart((t - t0) / dur));
     // draw() is clipped to [x0, x0 + (x1 - x0)·wipe]
@@ -202,11 +201,11 @@ export default {
       };
       const phase = MESH.phi0 + MESH.omega * (t - MESH.t0);
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      // Construction (measured): front meridians grow from the cap end down to the tip, the leftmost
+      // Construction: front meridians grow from the cap end down to the tip, the leftmost
       // first; ring segments follow the meridians that have already passed them, sticking out as short
       // ticks towards the next meridian. The left outline acts as the first meridian.
       const TOP = 225, LEN = 225 - POLE, SP = 2 * Math.PI / MESH.N;
-      // Traced frame by frame on the reference: the front meridians (ordered left→right) are drawn in
+      // The front meridians (ordered left→right) are drawn in
       // groups on 16th notes — the left one at frame 4507, the next two at 4514, two more at 4521 and the
       // rest at 4528 — each running from under the cap down to the tip in ~7 frames (slight ease-out).
       const RANK_START = [4506, 4507.6, 4514.5, 4514.5, 4521.4, 4521.4, 4528.4, 4528.4];

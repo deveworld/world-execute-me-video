@@ -1,7 +1,7 @@
 // 66.63–74.0583333333 "If I can make you happy, I will run the EXECUTION / Though we are trapped in this
 // strange, strange SIMULATION". Navy page: Lorenz equations typed in, an RK4 readout, a 3D axes
 // view where "me" and "you" (1e-5 apart) are integrated live; a wireframe globe, then the attractor
-// fills in as a glowing butterfly. Trajectory, camera and step counter are fitted to the reference.
+// fills in as a glowing butterfly.
 import { vignetteCanvas, clamp } from './lib/common.js';
 import { integrate, youStart, camera, stepAt } from './lorenz/sim.js';
 import { H } from './lorenz/data.js';
@@ -109,7 +109,7 @@ export default {
       ctx.drawImage(wipeCanvas, x, y);
     }
 
-    // Word entrance measured on the reference: it pops in at ~45 % opacity about 13 px low and settles
+    // Word entrance: it pops in at ~45 % opacity about 13 px low and settles
     // over ~6 frames. FIRST_FRAME: first visible frame per word (keyed by its 50 % time).
     const FIRST_FRAME = new Map([[67.067, 4023], [67.15, 4027], [67.433, 4044], [67.733, 4063], [68.033, 4081], [68.45, 4106],
       [68.517, 4109], [68.917, 4134], [69.167, 4148], [70.283, 4216], [70.783, 4246], [71.05, 4261], [71.267, 4274],
@@ -185,7 +185,7 @@ export default {
     // "me" and "you" coincide on screen until they separate; from here on both are drawn.
     let DIVERGE = NTOTAL;
     for (let i = 0; i < NTOTAL; i++) if (sep(i) > 0.05) { DIVERGE = i; break; }
-    // Measured from the reference: an older path dims with age, and on "strange, / strange" every
+    // An older path dims with age, and on "strange, / strange" every
     // earlier loop of one wing flashes bright and then fades (x < 0 at 72.183 s, x > 0 at 72.683 s).
     const pwlv = (pts, x) => {
       if (x <= pts[0][0]) return pts[0][1];
@@ -327,7 +327,7 @@ export default {
         ctx.moveTo(o[0], o[1]);
         ctx.lineTo(p[0], p[1]);
         ctx.stroke();
-        // On successive beats a bright pulse runs out along each axis and fades at its tip (measured).
+        // On successive beats a bright pulse runs out along each axis and fades at its tip.
         const k = Math.max(0, t * 60 - pulse);
         if (t * 60 >= pulse - 0.5 && k < 22) {
           const h = pwlv(PULSE_HEAD, k), tl = Math.max(0, h - pwlv(PULSE_LEN, k)), al = pwlv(PULSE_A, k);
@@ -343,7 +343,7 @@ export default {
         ctx.font = `italic 400 30px ${SERIF}`;
         ctx.fillStyle = `rgba(200,203,240,${a})`;
         ctx.textAlign = 'center';
-        // label drift relative to the axis tip, measured on the reference while the camera turns
+        // label drift relative to the axis tip while the camera turns
         const off = name === 'y' ? [pwlv(LABEL_Y[0], t), pwlv(LABEL_Y[1], t)] : name === 'x' ? [pwlv(LABEL_X[0], t), pwlv(LABEL_X[1], t)] : [0, 0];
         ctx.fillText(name, p[0] + (name === 'x' ? 2 : 0) + off[0], p[1] - 12 + off[1]);
         ctx.textAlign = 'left';
@@ -384,7 +384,7 @@ export default {
       let step = stepAt(t);
       let dense = 0;
       if (step === null) {
-        // fast-forward: the path keeps growing while the cloud brightens (fitted to the reference)
+        // fast-forward: the path keeps growing while the cloud brightens
         const k = clamp((t - 73.233) / 0.52);
         const e = k * k * (3 - 2 * k);
         step = 4084 + (NDENSE - 4084) * e + Math.max(0, t - 73.753) * 60 * 23;
@@ -469,7 +469,7 @@ export default {
       ctx.drawImage(glow, 0, 0, 1920, 1080);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
-      // Returning comet tips use the measured final projection phase, with continuous cubic tails.
+      // Returning comet tips follow their tracked screen positions (lorenz/comets.js), with continuous cubic tails.
       if (t >= 73.805) {
         const a = clamp((t - 73.805) / .012);
         const sample = (track, at) => {

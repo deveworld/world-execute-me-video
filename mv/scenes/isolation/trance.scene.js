@@ -65,7 +65,7 @@ const revealEdge = (words, t) => {
   return x;
 };
 
-// Lyric opacity during the final fade, measured per frame on the original (text contrast above the background).
+// Lyric opacity per frame during the final fade.
 const LYRIC_FADE = [[6193, 1], [6194, .96], [6196, .94], [6197, .91], [6198, .86], [6199, .85], [6200, .79], [6201, .65], [6202, .5], [6203, .28], [6204, .1], [6205, .05], [6206, 0]];
 const tableAt = (tab, x) => {
   if (x <= tab[0][0]) return tab[0][1];
@@ -100,13 +100,13 @@ export default {
     await env.loadFont('IM Fell English', '/scenes/isolation/fonts/IMFeENit28P.ttf', { style: 'italic' });
     const { ctx } = env.canvas(root);
 
-    const measuredRosette=createRosette();
+    const rosette=createRosette();
 
     // Lyrics as DOM lines with a moving soft mask.
     const lyricEls = LYRICS.map((L) => {
       const el = document.createElement('div');
       el.textContent = L.text;
-      // fitted on the original at full res (103.0 s): ~10% more ink than the plain face, so a thin
+      // ~10% more ink than the plain face, so a thin
       // same-colour stroke; "The trance," sits 0.4 px further left.
       const left = L.text === 'The trance,' ? 112.6 : 120;
       const size = L.text === 'The trance,' ? 76 : L.text === 'the trance' ? 74.5 : 74;
@@ -152,12 +152,12 @@ export default {
 
         // pendulum: one full swing per two beats
         const th = 15.630316 * D2R * Math.cos(6.8052 * (t - 99.4378976)) + .19247 * D2R;
-        const px = 1220, py = 111, Lp = 130.9;   // bob centre / arc row measured on the original
+        const px = 1220, py = 111, Lp = 130.9;   // bob centre / arc row
         // During the final fade the pendulum's thin lines keep only ~1/4 of their contrast (bob ~0.4),
         // more than the shared overlay alone gives: dim the strokes a little further.
         const lineA = 1 - 0.38 * smoothstep(clamp((t * 60 - 6194) / 16));
         ctx.globalAlpha = lineA;
-        // top bar: a crisp one-pixel line on row 102 (measured peak grey 165)
+        // top bar: a crisp one-pixel line on row 102 (peak grey 165)
         ctx.strokeStyle = '#a5a7c2';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -209,17 +209,17 @@ export default {
         ctx.fill();
         ctx.restore();
 
-        // Final fade (measured on frames 6194-6210): the whole frame dims towards a dark violet while
-        // keeping the background gradient. The rosette templates are measured absolute brightness that
-        // already contain this dimming, so they are composited after the fade instead of being dimmed twice.
+        // Final fade (frames 6194-6210): the whole frame dims towards a dark violet while
+        // keeping the background gradient. The rosette templates already contain this dimming, so they
+        // are composited after the fade.
         const fade = smoothstep(clamp((t * 60 - 6194) / 16));
         if (fade > 0) {
           ctx.fillStyle = `rgba(8,8,16,${0.64 * fade})`;
           ctx.fillRect(0, 0, 1920, 1080);
         }
-        measuredRosette.floor(ctx,t);
-        measuredRosette.lines(ctx,t);
-        measuredRosette.heads(ctx,t);
+        rosette.floor(ctx,t);
+        rosette.lines(ctx,t);
+        rosette.heads(ctx,t);
         ctx.globalCompositeOperation='source-over';
 
         const textA = tableAt(LYRIC_FADE, t * 60);
@@ -235,7 +235,7 @@ export default {
           el.style.webkitMaskImage = mask;
           el.style.maskImage = mask;
         });
-        // "If" rises ~8 px into place while it brightens over its first four frames (measured 6208-6212)
+        // "If" rises ~8 px into place while it brightens over its first four frames
         const fi = Math.round(t * 60) - 6208;
         ifEl.style.display = fi >= 0 ? '' : 'none';
         if (fi >= 0) {

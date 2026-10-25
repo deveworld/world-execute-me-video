@@ -1,6 +1,6 @@
 // "Though we are trapped, we are trapped, ah" — a heart-shaped maze is drawn outward from two dots
 // (lavender = me, orange = you); the heart's outer wall is traced last by two glowing pens.
-// Wall geometry and per-wall pen timing were measured on the original (scenes/love/maze/walls.js).
+// Wall geometry and per-wall pen timing are in maze/walls.js.
 import { loadLoveFonts, clamp, prog, table } from './lib.js';
 import { WALLS } from './maze/walls.js';
 
@@ -52,7 +52,7 @@ export default {
 
     function walls(t) {
       // Fresh walls are drawn white and settle to grey (~0.3 s); the interior dims once more while the
-      // outer wall is traced (176.70–176.82). Levels measured on the original.
+      // outer wall is traced (176.70–176.82).
       const plateau = table([[176.7, 202], [176.82, 162]], t);
       ctx.save();
       ctx.lineCap = 'square';
@@ -108,7 +108,7 @@ export default {
       ctx.restore();
     }
 
-    // Dot glow pulses (on "we", "We" and when the maze closes) and cell flashes (on each "trapped"), measured.
+    // Dot glow pulses (on "we", "We" and when the maze closes) and cell flashes (on each "trapped").
     const decay = (t, t0, tau, rise = 0.03) => (t < t0 - rise ? 0 : t < t0 ? (t - t0 + rise) / rise : Math.exp(-(t - t0) / tau));
     function dots(t) {
       DOTS.forEach((d, k) => {
@@ -156,7 +156,7 @@ export default {
           ctx.restore();
           continue;
         }
-        // Wipe front per frame measured on the original (fraction of the ink width).
+        // Wipe front per frame (fraction of the ink width).
         const n = (t - t0) * 60;
         const p = table(t0 < 174.3 ? [[-1, 0], [0, .2], [1, .75], [2, .95], [3, 1]] : [[-1, 0], [0, .62], [1, .9], [2, 1]], n);
         if (p <= 0) continue;

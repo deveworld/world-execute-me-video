@@ -1,10 +1,10 @@
 // "Challenging your God / You have made some ILLEGAL ARGUMENTS" — a terminal typed in sync with the lyric,
 // a Java stack trace + figlet banner, then everything collapses onto the "Illegal arguments" line, whose
 // cursor turns into the beam source of escape/beam (drawn underneath, z=1).
-// Every event time below is the first frame where it is visible in the original (read with lines.py).
+// Event times below are the first frame where each change is visible in the original.
 import { at, on, clamp, prog, baselineIn, resetCtx } from './lib/util.js';
 
-const X0 = 201, CW = 18, Y0 = 94, LH = 38;          // character grid measured from the original
+const X0 = 201, CW = 18, Y0 = 94, LH = 38;          // character grid
 const FONT = '440 30px "Fira Code"';
 const C = {
   bg: '#090a11',
@@ -88,7 +88,7 @@ export default {
         const part = s.slice(0, Math.min(s.length, budget));
         budget -= part.length;
         ctx.fillStyle = colour;
-        // draw char-by-char on the grid so the column alignment never drifts from the original
+        // draw char-by-char on the grid so the columns stay aligned
         for (let i = 0; i < part.length; i++) {
           if (part[i] !== ' ') ctx.fillText(part[i], X0 + (col + i) * CW, y);
         }
@@ -100,7 +100,7 @@ export default {
       render(t) {
         resetCtx(ctx);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // terminal background: cross-fades into escape/beam's vignette (132.76 -> 132.91; first lift on 132.750 orig)
+        // terminal background: cross-fades into escape/beam's vignette (132.76 -> 132.91)
         const bgA = 1 - prog(t, 132.762, 0.15);
         if (bgA > 0) {
           ctx.globalAlpha = bgA;

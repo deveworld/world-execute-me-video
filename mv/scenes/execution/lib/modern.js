@@ -1,4 +1,4 @@
-// Screen-native, deterministic canvas recreations of the four modern editors/terminals.
+// Canvas recreations of the four modern editors/terminals.
 import {addLabel} from './label.js';
 import {loadExecFonts} from './fonts.js';
 import {guarded} from './ctx2d.js';
@@ -53,7 +53,7 @@ function ubuntu(c){
  return(t)=>{
   const f=Math.round(t*60);
   if(f>=9316)row(13,['execution']);
-  if(f>=9345){row(14,prompt);if(f<9359)rect(c,396,718,24,47,'#fff');}  // V3: still on at 9358
+  if(f>=9345){row(14,prompt);if(f<9359)rect(c,396,718,24,47,'#fff');}  // caret still on at 9358
   else rect(c,11, f>=9316?718:668,24,47,'#fff');
  };
 }
@@ -69,8 +69,8 @@ function powershell(c){
   const x=f>=9401?384:16,y=f>=9372?382:336;
   if(f<9414){rect(c,x-1,y-1,5,44,'#000');rect(c,x,y,3,42,'#fff');}};
 }
-// IntelliJ's left tool-window strip (project, commit, structure; run, terminal, problems, git), traced (V3)
-// from the original at 1:1: ~2.5 px near-white strokes.
+// IntelliJ's left tool-window strip (project, commit, structure; run, terminal, problems, git):
+// ~2.5 px near-white strokes.
 function ijStrip(c){
  c.save();c.lineJoin='round';c.lineCap='round';const W2='#ececec';
  const P=(pts,w,close)=>{c.lineWidth=w;c.strokeStyle=W2;c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(close)c.closePath();c.stroke();};
@@ -112,7 +112,7 @@ function intellij(c){
  c.save();c.beginPath();c.rect(134,710,1755,45);c.clip();terminal(c,['/Users/me/Library/Java/JavaVirtualMachines/openjdk-21.0.2/Contents/Home/bin/java -javaagent:/Applications/IntelliJ IDEA.app/Contents/lib/idea_rt.jar'],134,744,output);c.restore();
  text(c,'me  ›  src  ›  main  ›  kotlin  ›  Main.kt',24,1066,'400 21px Inter','#bcbec4');
  text(c,'4:22     LF     UTF-8     4 spaces',1586,1066,'400 21px Inter','#bcbec4');
- // V3 (measured): while MainKt runs (until 9456) the toolbar shows rerun + a red stop square and the run
+ // While MainKt runs (until 9456) the toolbar shows rerun + a red stop square and the run
  // gutter's stop square is red; afterwards play + debug and a grey square. The editor caret is a 2 px white
  // bar with a 1 px black outline blinking 14 frames on / 14 off (on 9428–9441, 9456–9469).
  return(t)=>{const f=Math.round(t*60);if(f>=9428)terminal(c,['execution'],134,782,output);
@@ -123,8 +123,8 @@ function intellij(c){
    icon(c,'bug',1576,23,20,'#eee');rect(c,84,762,12,12,'#5d5e61');}
   if((f>=9428&&f<9442)||(f>=9456&&f<9470)){rect(c,519,262,4,36,'#000');rect(c,520,263,2,34,'#fff');}};
 }
-// VS Code activity-bar icons (explorer, search, source control, run & debug, extensions), traced (V3)
-// from the original at 1:1: 2 px strokes, ~#a2a2a2.
+// VS Code activity-bar icons (explorer, search, source control, run & debug, extensions):
+// 2 px strokes, ~#a2a2a2.
 function vsActivity(c,col){
  c.save();c.strokeStyle=col;c.fillStyle=col;c.lineWidth=2;c.lineJoin='round';c.lineCap='round';
  const P=(pts,close)=>{c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));if(close)c.closePath();c.stroke();};
@@ -153,11 +153,11 @@ function vscode(c){
  rect(c,0,55,1920,1,'#303030');rect(c,75,56,216,2,'#007acc');rect(c,290,57,1,57,'#303030');
  rect(c,75,56,1,984,'#303030');rect(c,76,600,1844,1,'#303030');rect(c,0,1040,1920,1,'#303030');
  // titlebar search, navigation and layout icons
- // V3: back / forward arrows traced from the original
+ // back / forward arrows
  line(c,[[650,21.8],[643.8,28],[650,34.2]],'#8c8c8c',2);line(c,[[644,28],[658,28]],'#8c8c8c',2);
  line(c,[[692.5,21.8],[698.8,28],[692.5,34.2]],'#5c5c5c',2);line(c,[[683,28],[698.5,28]],'#5c5c5c',2);
  c.fillStyle='#222';c.strokeStyle='#484848';c.lineWidth=1;c.beginPath();c.roundRect(720,9,480,37,8);c.fill();c.stroke();icon(c,'search',905,20,15,'#ddd');text(c,'me',932,35,'400 21px Inter','#eee');
- // V3: layout toggles traced from the original: primary sidebar, panel, secondary sidebar, customise
+ // layout toggles: primary sidebar, panel, secondary sidebar, customise
  [1718,1762,1806,1850].forEach((x,i)=>{c.strokeStyle='#d8d8d8';c.lineWidth=1.8;c.strokeRect(x,20.4,18,15.2);
   if(i===0)rect(c,x+5,20,1.4,16,'#d8d8d8');if(i===1)rect(c,x,30,18,6,'#d8d8d8');if(i===2)rect(c,x+11.6,20,1.4,16,'#d8d8d8');
   if(i===3){rect(c,x,24,18,2,'#d8d8d8');rect(c,x+6,25,2,11,'#d8d8d8');}});

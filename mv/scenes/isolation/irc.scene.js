@@ -5,8 +5,7 @@ import { build, backdrop, caretOn, wordAlpha, wipe, clamp, titleSettle } from '.
 const X0 = 288.05, CW = 17.4, ROW = 36; // grid origin, column width, row pitch
 const SIZE = 28.9;
 const baseOf = (row) => (row === 0 ? 167 : 203 + ROW * (row - 1));
-// Colours re-measured on the original's glyph cores (113.6 s), compensating for the desaturation of thin
-// anti-aliased strokes: the timestamp colons are a saturated gold, the nick colours are more vivid.
+// Colours compensate for the desaturation of thin anti-aliased strokes: the timestamp colons are a saturated gold, the nick colours are more vivid.
 const C = {
   txt: '#eceff0', white: '#ffffff', time: '#f0f5f7', sep: '#d7a700', join: '#aff36a', bar: '#649a21',
   host: '#18a19c', joined: '#66a610', dash: '#6a5d71', paren: '#73a32a', quit: '#cb3e42',
@@ -91,7 +90,7 @@ export default {
     return {
       render(t) {
         wipe(root, t, 113.1, [752, 572, 428, 212]);
-        // title arrives at the Discord title's x (365) and settles in ~9 frames (measured 6794-6801)
+        // title arrives at the Discord title's x (365) and settles in ~9 frames
         const back = titleSettle(t, 6794, 9.5);
         el.title.style.transform = back > 0 ? `translateX(${(75 * back).toFixed(2)}px)` : '';
         el.have.style.opacity = String(wordAlpha(t, 113.217, 0.083));

@@ -1,4 +1,4 @@
-// Static wireframe globe of the "Simulation" shot (fitted to the reference: perspective view from
+// Static wireframe globe of the "Simulation" shot (perspective view from
 // 6.69 R at 12.1° elevation, 8 great circles every 22.5° starting at 11.25°, parallels at 0° and ±30°).
 const D = 6.6875, E = 0.21162, PHI0 = 11.25, MSTEP = 22.5, LATS = [30, 0, -30];
 const CX = 1355.5, CY = 539.5, LIMB = 443.5;

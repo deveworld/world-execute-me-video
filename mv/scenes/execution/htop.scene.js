@@ -1,6 +1,6 @@
 // 162.683–169.9583333333 · htop (Midnight-Commander colours on blue) at the right half while the lyric
-// is written at the left (lyrics.scene.js). Every number on screen was read off the original
-// by OCR at each htop refresh (lib/htop_data.js); this file only re-creates the UI states:
+// is written at the left (lyrics.scene.js). The numbers on screen come from lib/htop_data.js,
+// one entry per htop refresh; this file re-creates the UI states:
 // tagging every process (cursor climbs from `countdown` to `me`), F9 "Send signal" panel,
 // SIGTERM → SIGKILL, "Sending...", zombies, everything gone but `me` + `htop`, then `me`
 // spawns 7 threads and pins all 8 CPUs at 100 %.
@@ -19,8 +19,8 @@ const C = {
   shadow: '#8e97ef',
   tag: '#fff6bf',
   bracket: '#fffbe0',
-  // meter bars (V3): drawn as 3x16 px blocks like the original's '|' cells, colours measured on the
-  // original's bar cores (normal / system / memory used share htop's bold green)
+  // meter bars: 3x16 px blocks like the original's '|' cells (normal / system / memory used share
+  // htop's bold green)
   barNormal: '#9aebd7',
   barPink: '#eca4c9',
   memUsed: '#9aebd7',
@@ -37,7 +37,7 @@ const C = {
   load3: '#919bf7',
 };
 
-// Cut / step times read off the original (frame-exact).
+// Cut and step times.
 const T = {
   start: F(9761),           // 162.683
   signal: F(9885),          // 164.750 F9 panel
@@ -79,7 +79,7 @@ function putSegsR(g, row, endCol, segs, override) {
 }
 
 // Compare on the frame grid: the OCR times are rounded to 1 ms, so e.g. 164.867 (frame 9892.02) must
-// already apply on frame 9892 (V3 fix: these refreshes landed one frame late).
+// already apply on frame 9892.
 function refreshAt(t) {
   const f = Math.round(t * 60);
   let rec = REFRESH[0];
@@ -140,7 +140,7 @@ function drawHeader(g, rec) {
   c = g.put(5, c, ', ', { fg: C.cyan });
   c = g.put(5, c, String(thr), { fg: C.bright, bold: true });
   c = g.put(5, c, ' thr, ', { fg: C.cyan });
-  c = g.put(5, c, '0', { fg: C.cyan, bold: false }); // V3: kthr count is plain cyan in the original
+  c = g.put(5, c, '0', { fg: C.cyan, bold: false }); // the kthr count is plain cyan
   c = g.put(5, c, ' kthr; ', { fg: C.cyan });
   c = g.put(5, c, String(run), { fg: C.bright, bold: true });
   g.put(5, c, ' running', { fg: C.cyan });
@@ -215,7 +215,7 @@ function drawFbar(g, signal) {
   }
 }
 
-// V3 OCR correction (checked against the original): at 164.983 CPU1 shows 9 green + 3 pink bars.
+// OCR correction: at 164.983 CPU1 shows 9 green + 3 pink bars.
 for (const r of REFRESH) if (r.t === 164.983) r.cpu[1] = [12, 3, '36.4'];
 
 // Meter bar cells of the current screen: [row, col, colour]; drawn as blocks after the text grid.

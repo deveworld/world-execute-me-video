@@ -1,6 +1,5 @@
-// Mili's official upload as the sound source, through the YouTube iframe API. Its audio is the soundtrack that
-// `npm run build` extracts from the original video at the same timing (0 ms offset and no drift over the
-// song, measured by cross-correlation), so video time is song time.
+// Mili's official upload as the sound source, through the YouTube iframe API. Its audio lines up with the
+// soundtrack `npm run build` extracts from the original video, so video time is song time.
 export const VIDEO_ID = 'ESx_hy1n7HA';
 export const YT_STATE = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 };
 

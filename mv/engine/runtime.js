@@ -1,12 +1,12 @@
 // Stage runtime: finds every *.scene.js, mounts the scenes active at song time t and
-// asks each to draw itself. One scene failing never stops the others; failures are
-// recorded in __stage.errors and drawn over that scene so they can't go unnoticed.
+// asks each to draw itself. A scene that throws doesn't stop the others: its error is
+// recorded in __stage.errors and drawn over that scene.
 import * as beat from './beat.js';
 import * as anim from './lib/anim.js';
 
 const W = 1920, H = 1080;
 const stage = document.getElementById('stage');
-// "/scenes/..." style URLs (scene index, env loaders) are relative to the project root, not the host, so the
+// "/scenes/..." style URLs (scene index, env loaders) resolve against the project root, so the
 // stage also works under a path prefix such as a GitHub Pages project site.
 const ROOT = new URL('../', import.meta.url);
 const fromRoot = (url) => typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? new URL(url.slice(1), ROOT).href : url;

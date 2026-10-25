@@ -1,4 +1,4 @@
-// Beat grid measured from the source audio: 130.00 BPM, beat 0 at 0.1396 s.
+// Beat grid of the song: 130.00 BPM, beat 0 at 0.1396 s.
 // Hard cuts in the original land on this grid (mostly on bar or half-bar lines).
 export const BPM = 130;
 export const BEAT0 = 0.1396;

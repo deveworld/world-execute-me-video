@@ -62,14 +62,14 @@ export default {
       <div data-k="caret" style="position:absolute;left:340px;top:879px;width:2px;height:26px;background:#c9c5ff"></div>
     `);
 
-    // word reveal starts measured frame by frame on the original (each ramps over ~5 frames)
+    // word reveal starts (each ramps over ~5 frames)
     const words = [null, 111.385, 111.46, 111.755];
     const peach = [251, 192, 160], grey = [138, 139, 150];
     return {
       render(t) {
         words.forEach((w, i) => { el[`w${i}`].style.opacity = String(wordAlpha(t, w)); });
         el.caret.style.visibility = caretOn(t) ? 'visible' : 'hidden';
-        el.typing.style.opacity = String(clamp((t - 111.55) / 0.117));   // measured ramp, frames 6693-6700
+        el.typing.style.opacity = String(clamp((t - 111.55) / 0.117));   // ramp over frames 6693-6700
         // typing dots: a peach glow runs across the three dots once per beat
         for (let i = 0; i < 3; i++) {
           const ph = ((t - 111.66 - 0.06 * i) % SPB + SPB) % SPB;

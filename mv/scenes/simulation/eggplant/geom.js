@@ -1,5 +1,5 @@
-// Eggplant geometry read off the reference (77.90 s): body axis frame, centre-line and radius
-// polynomials of the silhouette, fitted mesh parameters, calyx/stem outline and its inner lines.
+// Eggplant geometry (as of 77.90 s): body axis frame, centre-line and radius
+// polynomials of the silhouette, mesh parameters, calyx/stem outline and its inner lines.
 export const AXIS = { c: [650.25, 725.16], d: [0.577, -0.8167], n: [0.8167, 0.577] };
 export const PM = [-6.18017e-07, -0.000112988636, -0.032994574916, -13.966910579637];
 export const PR = [-1.603073e-12, -4.111082e-10, 1.587401e-08, 1.273724e-05, -0.0006046889, -0.2386223, 112.224];

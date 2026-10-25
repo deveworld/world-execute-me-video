@@ -1,4 +1,4 @@
-// math/circle — see core/renderer.js: all four math verses share one pure renderer.
+// math/circle — see core/renderer.js: all four math verses share one renderer.
 import { createRenderer } from './core/renderer.js';
 
 export default {

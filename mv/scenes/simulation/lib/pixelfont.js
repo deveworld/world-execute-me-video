@@ -1,4 +1,4 @@
-// Tiny bitmap font read off the reference frames (3-wide glyphs, 5-row caps, 4-row x-height,
+// Tiny bitmap font (3-wide glyphs, 5-row caps, 4-row x-height,
 // 1-row descender, 'i' dot one row above cap height). Rows are listed from row -1 (i-dot row)
 // to row 5 (descender row); '#' = lit pixel.
 const G = {

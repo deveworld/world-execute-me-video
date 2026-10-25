@@ -1,6 +1,6 @@
 // "Question me, question me, I can answer all LO-O-OVE" — an OMR answer sheet whose pencilled bubbles
 // form a heart; the sheet then fades away, a red-brown heart outline is drawn around the bubbles and
-// "Lo-o-ove" is hand-lettered in pencil. Layout and per-bubble fill times measured on the original.
+// "Lo-o-ove" is hand-lettered in pencil.
 import { loadLoveFonts, clamp, prog, table, traceHeart, rng } from './lib.js';
 import { FILLS } from './omr/fills.js';
 import { HANDWRITING } from './omr/handwriting.js';
@@ -13,14 +13,14 @@ const BX = (c, k) => 271.5 + 53.5 * k + 321 * c; // bubble centre x
 const BY = (r) => 123.5 + 44 * (r - 1); // bubble centre y (rows 1..20)
 const SHEET_FADE = [184.183, 0.084];
 
-// Lyric typing: [text, x of first char, baseline, start, chars/s] (first char shows at start + 1/cps; re-measured per char)
+// Lyric typing: [text, x of first char, baseline, start, chars/s] (first char shows at start + 1/cps)
 const LYRIC = [
   ['Question', 1200, 568, 180.99, 120], [' me', 1200 + 8 * 32.4, 568, 181.358, 60],
   ['Question', 1200, 656, 181.93, 120], [' me', 1200 + 8 * 32.4, 656, 182.284, 60],
   ['I', 1200, 744, 182.888, 60], [' can', 1200 + 32.4, 744, 183.06, 60],
   [' answer', 1200 + 5 * 32.4, 744, 183.225, 110], [' all', 1200 + 12 * 32.4, 744, 183.56, 100],
 ];
-// Handwritten "Lo-o-ove": glyph ink boxes measured on the original, revealed left to right.
+// Handwritten "Lo-o-ove": glyph ink boxes, revealed left to right.
 const HAND = [['L', 1201, 1271, 179], ['o', 1285, 1337, 137], ['-', 1359, 1400, 137], ['o', 1420, 1473, 137],
   ['-', 1495, 1536, 137], ['o', 1556, 1609, 137], ['v', 1623, 1672, 137], ['e', 1680, 1729, 137]];
 const HAND_REVEAL = [[184.03, 1195], [184.05, 1222], [184.067, 1247], [184.083, 1271], [184.117, 1327], [184.133, 1337],
@@ -125,7 +125,7 @@ export default {
     }
 
     // ---- question numbers, regular and bold: the rows of the heart turn bold in three
-    // cascades on the lyric (measured frame by frame on the original), before any pencil mark.
+    // cascades on the lyric, before any pencil mark.
     const BOLD_AT = [
       [, , , 181.117, 181.133, 181.167, 181.633, 181.65, 181.683, 181.717, 181.75, 182.083, 182.1, 182.133, 182.167],
       [, , , 181.117, 181.15, 181.167, 181.617, 181.65, 181.683, 181.717, 181.75, 182.083, 182.1, 182.133, 182.167, 182.2, 182.55, 182.567, 182.6],
@@ -197,7 +197,7 @@ export default {
       return c;
     })();
 
-    // ---- handwriting: measured monoline strokes, with the pencil grain applied once
+    // ---- handwriting: monoline strokes, with the pencil grain applied once
     const [hwC, hw] = mk();
     {
       hw.fillStyle='rgb(38,33,31)';hw.strokeStyle=hw.fillStyle;hw.lineWidth=.25;
@@ -234,11 +234,9 @@ export default {
         }
         // pencil fills
         FILLS.forEach(([r, c, k, t0], i) => {
-          // Per-frame pencil progress measured on the original (mean and contrast inside a bubble):
-          // the stripes start a frame before t0, the graphite fills in from t0+2 frames and the
-          // stripes keep showing through the final fill.
-          // The dark stripes are drawn in by the pencil (left to right), then graphite covers them
-          // part-way so the stripe texture stays visible (bubble mean/contrast matched per frame).
+          // Pencil progress: the stripes start a frame before t0, the graphite fills in from t0+2 frames
+          // and the stripes keep showing through the final fill. The dark stripes are drawn in by the
+          // pencil (left to right), then graphite covers them part-way so the stripe texture stays visible.
           const n = (t - t0) * 60;
           if (n <= -1.6) return;
           const x = BX(c, k) - 20, y = BY(r) - 20;

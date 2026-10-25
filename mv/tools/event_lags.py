@@ -3,7 +3,7 @@ at the same frame, with the same strength?
 
   python3 -P -E tools/event_lags.py out/v3/world-execute-remake-v3.mp4 out/events
 
-Per 160x180 tile (12x6 grid, measured at 480x270) it builds the frame-to-frame activity of both videos.
+Per 160x180 tile (12x6 grid, computed at 480x270) it builds the frame-to-frame activity of both videos.
 An "event" is a local activity peak in the original (or in ours, for extra events). For each event the
 best-matching lag of ours within ±12 frames is found by cross-correlating a ±10 frame window.
 Reported: |lag| >= 2 frames (early/late), strength ratio < 0.4 (missing/too weak) or > 2.5 (too strong),

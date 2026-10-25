@@ -1,6 +1,6 @@
 // "If I can have you back, I will run the EXECUTION".
 // A vector particle-detector display: counter-rotating beams, fading circular tracks,
-// and the frozen jet event. All geometry, particles and lyric strokes are code.
+// and the frozen jet event.
 import { clamp, lerp, prog, table, rng, loadLoveFonts } from './lib.js';
 import { DETECTOR } from './orbit/detector.js';
 import { LABELS } from './orbit/labels.js';
@@ -14,7 +14,7 @@ import { EVENT_LOOPS } from './orbit/loops.js';
 const CX = 1220, CY = 540.5, TAU = Math.PI * 2, D = Math.PI / 180;
 const phi = (a) => a * D;
 
-// Native vector glyphs retain the monoline ink and the original character reveal clock.
+// Lyric glyphs as monoline vector ink, revealed per character on the original's timing.
 const LINES = [
   {y:381,chars:[['I',119,0,44,-1],['f',131,17,44,-1],['I',184,0,44,170.283],['c',222,25,44,170.658],['a',258,25,44,170.691],['n',298,24,44,170.725]]},
   {y:461,chars:[['h',119,24,44,170.892],['a',155,25,44,170.925],['v',192,25,44,170.942],['e',226,25,44,170.958],['y',282,27,44,171.275,'warm'],['o',318,28,44,171.308,'warm'],['u',358,24,44,171.325,'warm'],['b',421,26,44,171.358],['a',457,26,44,171.375],['c',496,25,44,171.392],['k',534,23,44,171.408]]},
@@ -32,7 +32,7 @@ export default {
     const glyphs=LINES.map((line,li)=>({...line,chars:line.chars.map(([ch,x,w,h,t0,col],ci)=>({ch,x,w,h,t0,col,p:new Path2D(OPENING_PATHS[`${li}:${ci}`])}))}));
     const sector=(c,r0,r1,a0,a1)=>{c.beginPath();c.arc(CX,CY,r1,a0,a1);c.arc(CX,CY,r0,a1,a0,true);c.closePath();};
     const circle=(c,r)=>{c.beginPath();c.arc(CX,CY,r,0,TAU);c.stroke();};
-    // Static detector as vector layers. Each layer has its own measured brightness
+    // Static detector as vector layers. Each layer has its own brightness
     // (stroke excess over the background, relative to rgb(68,67,74)): the layers flash
     // from the outside in as the beams are brought into the centre (171.90-172.25).
     const ringPath=(radii)=>{const p=new Path2D();for(const r of radii){p.moveTo(CX+r,CY);p.arc(CX,CY,r,0,TAU);}return p;};
@@ -54,7 +54,7 @@ export default {
     const grey=(g,ex=62)=>{const v=(k)=>Math.min(255,Math.round(k+ex*g));return`rgb(${v(6)},${v(5)},${v(10)+Math.round(2*g)})`;};
     function detector(t){
       ctx.lineWidth=.6;
-      // off: the source's codec noise floor inflated the measured band energies by ~1.2 grey.
+      // off: the source's codec noise floor adds ~1.2 grey to the band energies.
       for(const[path,gain,off,fill]of LAYERS){const g=Math.max(.1,table(gain,t)-off);
         if(fill){ctx.fillStyle=grey(g,7);ctx.fill(fill,'evenodd');}
         ctx.strokeStyle=grey(g);ctx.stroke(path);}
@@ -66,13 +66,13 @@ export default {
     // Cell 32 sits under the missing-energy line; its sampled colour picked up the orange glow.
     // On the original the cell itself is dark like its neighbour.
     const CELLS=DETECTOR.cells.map((c,i)=>i===32?{...c,inner:[16,15,22],outer:[15,15,27],bar:[27,25,62]}:c);
-    // Tracks inside the three jets are nearly straight on the original (high momentum).
+    // Tracks inside the three jets are nearly straight (high momentum).
     const inJet=(a)=>{const d=((a*180/Math.PI)%360+360)%360;return JETS.some(([lo,fi])=>d>=lo-2&&d<=lo+fi.length*.5+2);};
     const finalTracks=DETECTOR.tracks.map(tr=>{
       const k=inJet(tr.angle)?tr.curvature*.08:tr.curvature;
       const pts=[];for(let r=0;r<=184;r+=.65){const a=tr.angle+Math.asin(k*r/2);pts.push([r*Math.cos(a),r*Math.sin(a)]);}return{pts,loop:false,jet:inJet(tr.angle)};
     });
-    // Jet wedges rendered once from the measured angular brightness profiles.
+    // Jet wedges rendered once from their angular brightness profiles.
     const jetCanvas=document.createElement('canvas');jetCanvas.width=jetCanvas.height=380;{
       const jc=jetCanvas.getContext('2d'),img=jc.createImageData(380,380);
       for(let y=0;y<380;y++)for(let x=0;x<380;x++){
@@ -85,15 +85,15 @@ export default {
       }
       jc.putImageData(img,0,0);
     }
-    // Curling tracks: full circles fitted on the original (they start near the vertex).
+    // Curling tracks: full circles (they start near the vertex).
     for(const[x,y,radius]of EVENT_LOOPS){const pts=[];const a0=Math.atan2(-y,-x);for(let i=0;i<=300;i++){const a=a0+TAU*i/300;pts.push([x+radius*Math.cos(a),y+radius*Math.sin(a)]);}finalTracks.push({pts,loop:true});}
 
     function glow(x,y,r,a=1,color='255,255,255'){
       const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(${color},${.85*a})`);g.addColorStop(.24,`rgba(${color},${.25*a})`);g.addColorStop(1,`rgba(${color},0)`);
       ctx.fillStyle=g;ctx.fillRect(x-r,y-r,2*r,2*r);
     }
-    // Burst tracks outside the measured centre: arcs fitted to the original, revealed per
-    // sample at the measured frame and faded with the measured per-pixel decay.
+    // Burst tracks outside the central field: arcs revealed per sample at their frame and
+    // faded with the per-pixel decay.
     const FADE=[.9,.97,.97,.95,.92,.87,.81,.74,.67,.6,.54,.49,.44,.4,.36,.33,.3,.27,.25,.23,.21,.195,.18,.165,.15,.13,.11,.1,.09,.08,.07,.06,.05,.045,.04,.035,.03,.025,.02,.015,.01,.005];
     const NL=24,TRACK_GAIN=2.1;
     function bursts(t){
@@ -102,8 +102,7 @@ export default {
         const buckets=Array.from({length:NL},()=>new Path2D());let any=false;
         for(const[f0,arcs]of sets){
           if(fr<f0||fr-f0>80)continue;
-          // Per-burst gain from the track energy outside the centre (orig vs ours, baseline removed);
-          // the two light-up bursts also fade faster than the per-pixel average.
+          // Per-burst gain; the two light-up bursts also fade faster than the per-pixel average.
           const wg=f0===10312?1.05:f0===10340?1.25:f0===10368?1.45:1,ws=f0===10312||f0===10340?1.25:1;
           for(const[cx,cy,r,a0,a1,T,I]of arcs){
             const n=T.length,da=(a1-a0)/(n-1);
@@ -124,11 +123,11 @@ export default {
         ctx.restore();
       };
       draw(collect(BURST_TRACKS),184);
-      // Inside r < 62 the measured centre carries the bursts until 172.925.
+      // Inside r < 62 the central field carries the bursts until 172.925.
       if(t>=172.925)draw(collect([BURST_INNER]),61.5);
     }
     const centralPaths=new Map();
-    function measuredCentral(t){
+    function centralField(t){
       if(t>=172.925)return;
       const i=clamp(Math.round(t*60)-CENTRAL_FIELD[0][0],0,CENTRAL_FIELD.length-1);
       if(!centralPaths.has(i)){
@@ -136,8 +135,8 @@ export default {
         if(centralPaths.size>8)centralPaths.delete(centralPaths.keys().next().value);
       }
       ctx.save();ctx.beginPath();ctx.arc(CX,CY,61.5,0,TAU);ctx.clip();ctx.fillStyle='rgb(6,5,10)';ctx.fillRect(CX-63,CY-63,126,126);
-      // The cluster is lavender at its core and whiter outward (B/G 1.2 -> 1.1 measured on the
-      // original); the gain keeps its luminance and timing as before.
+      // The cluster is lavender at its core and whiter outward (B/G 1.2 -> 1.1); the gain
+      // keeps its luminance and timing.
       let previous=0,scaledPrevious=0;
       for(const[alpha,path]of centralPaths.get(i)){
         const cumulative=previous+(1-previous)*alpha,scaled=Math.min(1,cumulative*1.32);
@@ -158,9 +157,8 @@ export default {
       }
       const fade=1-prog(t,172.9,.035);
       for(let k=0;k<2;k++){
-        // Seek the actual past trajectory: the tail bends outward as the heads
-        // spiral inward, rather than being a concentric arc at today's radius.
-        // Measured tail: full brightness at the head, smooth fall-off over ~56 degrees (0.072 s).
+        // The tail follows the past trajectory, so it bends outward as the heads
+        // spiral inward. Tail: full brightness at the head, smooth fall-off over ~56 degrees (0.072 s).
         for(let n=0;n<28;n++){
           const age=n*.0026,[x0,y0]=position(t-age,k),[x1,y1]=position(t-age-.0028,k),u=Math.min(1,(age+.0013)/.0718);
           ctx.strokeStyle=`rgba(250,248,255,${(1-u*u*(3-2*u))*fade})`;ctx.lineWidth=2.2;
@@ -171,7 +169,7 @@ export default {
     }
     function event(t){
       // The particles fly outward: everything inside the tracker is revealed by radius
-      // (measured: 18 px at 172.933, 52 at .950, 90 at .967, 128 at .983, 164 at 173.0, full at 173.017).
+      // (18 px at 172.933, 52 at .950, 90 at .967, 128 at .983, 164 at 173.0, full at 173.017).
       const R=table([[172.925,0],[172.933,18],[172.95,52],[172.967,90],[172.983,128],[173.0,164],[173.017,186]],t);if(t<172.925||R<=0)return;
       ctx.save();ctx.beginPath();ctx.arc(CX,CY,Math.min(184,R),0,TAU);ctx.clip();
       ctx.drawImage(jetCanvas,CX-190,CY-190);
@@ -183,7 +181,7 @@ export default {
       // Missing transverse energy inside the tracker appears with the tracks.
       {const aa=phi(181.6);ctx.strokeStyle='rgb(255,212,173)';ctx.lineWidth=1.6;ctx.shadowColor='rgb(255,212,173)';ctx.shadowBlur=6;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(184*Math.cos(aa),184*Math.sin(aa));ctx.stroke();ctx.shadowBlur=0;}
       ctx.restore();
-      // Collision flash at the vertex (measured centre energy: peak at 172.95, then a slow decay).
+      // Collision flash at the vertex (peak at 172.95, then a slow decay).
       glow(CX,CY,34,table([[172.925,0],[172.933,1.25],[172.95,1.45],[172.983,1.3],[173.05,1.15],[173.3,1.0],[173.642,.95]],t),'236,234,255');
       {const c=table([[172.925,0],[172.933,1],[172.95,.85],[172.967,.78],[172.983,.75],[173.0,.7],[173.033,.62],[173.067,.52],[173.1,.47],[173.133,.42],[173.2,.38]],t);
        const g=ctx.createRadialGradient(CX,CY,0,CX,CY,30);g.addColorStop(0,`rgba(255,255,255,${c})`);g.addColorStop(13/30,`rgba(252,251,255,${c})`);g.addColorStop(1,'rgba(240,238,255,0)');
@@ -199,7 +197,7 @@ export default {
         ctx.globalAlpha=a;
         if(cell.bar.reduce((s,v)=>s+v,0)>190){sector(ctx,263,280,a0,a1);ctx.fillStyle=`rgb(${cell.bar.join(',')})`;ctx.fill();}
         if(cell.height){
-          // Towers bloom on the original: a soft lavender halo and a bright cap on top.
+          // Towers bloom: a soft lavender halo and a bright cap on top.
           const h=lerp(280,cell.height,table(ORBIT_MOTION.bar,t));sector(ctx,280,h,a0,a1);
           const g=ctx.createRadialGradient(CX,CY,280,CX,CY,cell.height);cell.ramp.forEach((rgb,j)=>g.addColorStop(j/2,`rgb(${rgb.join(',')})`));ctx.fillStyle=g;
           ctx.shadowColor='rgba(150,140,255,.85)';ctx.shadowBlur=14;ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='#eeebff';ctx.lineWidth=.7;ctx.stroke();
@@ -224,7 +222,7 @@ export default {
     function words(t){
       ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
       for(const line of glyphs)for(const g of line.chars){
-        // Glyphs pop in within about one frame on the original (wipe + fade measured per glyph).
+        // Glyphs pop in within about one frame (wipe + fade per glyph).
         const a=g.t0<0?1:clamp((t-g.t0+.008)/.018);if(a<=0)continue;
         ctx.save();ctx.globalAlpha=.3+.7*a;ctx.fillStyle=g.col==='warm'?'rgb(244,212,184)':'rgb(243,240,240)';ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=.18;
         ctx.beginPath();ctx.rect(g.x-3,line.y-4,(g.w+6)*clamp(a*1.25),g.h+25);ctx.clip();ctx.fill(g.p,'evenodd');ctx.stroke(g.p);ctx.restore();
@@ -244,7 +242,7 @@ export default {
       for(let j=0;j<3;j++){
         const edge=table(rightTables[j],t),p=clamp((edge-1510)/139);
         if(p>0)for(const [text,l,r]of[[left[j],790,916],[right[j],1511,1648]]){ctx.save();ctx.beginPath();ctx.rect(l-2,107+j*24,(r-l+4)*p,23);ctx.clip();label(text,l,r,111+j*24,125+j*24);ctx.restore();}
-        // Jet number tags: measured fade-in and peak brightness per tag (independent of the text wipe).
+        // Jet number tags: fade-in and peak brightness per tag (independent of the text wipe).
         if(t<173.25)continue;
         ctx.save();ctx.globalAlpha=table([[[173.283,0],[173.3,.7]],[[173.25,0],[173.267,.19],[173.283,.66],[173.3,.76],[173.317,.85]],[[173.25,0],[173.267,.31],[173.283,.68],[173.3,.74],[173.317,.82],[173.333,.87]]][j],t);const[l,r,top,bot]=[[1451,1460,225,239],[926,936,803,817],[1408,1418,870,884]][j];label(String(j+1),l,r,top,bot);ctx.restore();
       }ctx.restore();
@@ -252,7 +250,7 @@ export default {
     return{render(t){
       ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgb(6,5,10)';ctx.fillRect(0,0,1920,1080);
       // The detector gains contrast as the beams are brought into the centre.
-      detector(t);bursts(t);beams(t);measuredCentral(t);event(t);words(t);labels(t);
+      detector(t);bursts(t);beams(t);centralField(t);event(t);words(t);labels(t);
     }};
   },
 };

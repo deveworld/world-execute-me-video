@@ -4,7 +4,7 @@
 
 Regions are x0,y0,x1,y1 in 1920x1080 pixels. For each region it prints the frame times where the
 mean absolute difference to the previous frame spikes (> mean + k*std, at least --min), plus the
-per-frame trace with --trace. Use it to read lyric/word timings off the original frame-exactly.
+per-frame trace with --trace. Use it to read word timings off the original.
 """
 import argparse
 from pathlib import Path

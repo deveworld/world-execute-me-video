@@ -1,2 +1,2 @@
-// Initial sites fitted to the source Voronoi bisectors; subsequent states are computed by Lloyd relaxation.
+// Initial Voronoi sites; later states come from Lloyd relaxation.
 export const LLOYD_SITES = [[30.5664,43.4063],[42.6137,41.6851],[55.2667,49.637],[106.2148,60.5547],[136.8954,77.3866],[113.7164,87.6003],[102.0451,90.234],[40.0089,92.1574],[69.0262,94.0256],[124.247,94.7909],[132.8169,90.4654],[128.8931,92.7364],[132.7538,103.3336],[67.2626,107.7407],[182.2042,113.3777],[139.9674,119.0164],[143.4736,132.763]];

@@ -1,6 +1,6 @@
 // "I've studied, I've studied how to properly LO-O-OVE" — a TensorFlow-Playground-style UI that learns a
-// heart, resets, and learns "Lo-o-ove". Epoch/loss ticks, lyric timing, layout and colours measured on the
-// original. Neuron previews and output contours are evaluated from compact fitted scalar networks.
+// heart, resets, and learns "Lo-o-ove". Neuron previews and output
+// contours come from small fitted scalar networks.
 import { loadLoveFonts, clamp, lerp, table } from './lib.js';
 import { NEURONS } from './playground/neurons.js';
 import { OUTPUT_NETWORKS } from './playground/output-networks.js';
@@ -15,12 +15,12 @@ const FEAT_FN = [(x) => x / Math.PI, (x, y) => y / Math.PI, (x) => Math.sin(x), 
 const OFF1 = new Set([10, 11, 20, 21, 22, 23]); // features disabled while learning the heart
 const ROW = (i) => 215 + 29.17 * i;
 
-// Measured timeline.
+// Timeline.
 const EPOCH_T = [177.45, 177.567, 177.683, 177.8, 177.9, 178.017, 178.133, 178.25, 178.367, 178.483, 178.6, 178.717, 178.833,
   178.95, 179.067, 179.183, 179.3, 179.4, 179.517, 179.633, 179.75, 179.867, 179.983, 180.1, 180.217, 180.333, 180.45,
   180.567, 180.683, 180.8, 180.9, 181.017];
 const RESET = 179.75, DISCRETE = 180.2083333333;
-// After "Discretize" the trained links strengthen in steps (mean link ink measured per frame).
+// After "Discretize" the trained links strengthen in steps.
 const L1_STEP = [[180.2, .94], [180.217, .97], [180.233, .99], [180.35, 1.0]];
 const L2_STEP = [[180.2, .86], [180.217, .91], [180.233, .94], [180.35, .96], [180.9, .98]];
 const OUT_STEPS = [[180.2, 0], [180.217, .3], [180.233, .45], [180.25, .45], [180.267, .48], [180.317, .48], [180.333, .74], [180.45, .74], [180.467, .89], [180.783, .89], [180.8, 1]];
@@ -33,7 +33,7 @@ const LOSS = [[0, 0.44], [177.517, 0.433], [177.633, 0.398], [177.75, 0.298], [1
   [180.517, 0.045], [180.633, 0.038], [180.75, 0.033], [180.867, 0.03], [180.983, 0.028]];
 
 const BLUE = [172, 176, 246], ORANGE = [253, 192, 160], WHITE = [250, 250, 250];
-// Feature previews have a greyer zero than the neuron previews (measured on the original).
+// Feature previews have a greyer zero than the neuron previews.
 const FEAT_WHITE = [236, 231, 232];
 const col = (v, white = WHITE) => {
   const k = Math.min(1, Math.abs(v));
@@ -84,8 +84,7 @@ export default {
       return c;
     };
     // The final scalar output neuron runs on the same sinusoidal feature family.
-    // Compact fitted networks reproduce the source's cloudy training contour and
-    // its discrete lettering without baking any source raster into the scene.
+    // Small fitted networks give the cloudy training contour and the discrete lettering.
     const inputFields=Array.from({length:N*N},(_,p)=>FEAT_FN.map(f=>f(gx(p%N),-gx(Math.floor(p/N)))));
     function outputNetwork(net){
       const basis=NEURONS[net.basis];
@@ -167,9 +166,9 @@ export default {
       const on = phase2 ? onAll : on1;
       ctx.save();
       ctx.lineCap = 'butt';
-      // g: ink gain per layer, measured as the mean link ink of each band on the original.
+      // g: ink gain per layer (mean link ink of each band).
       const link = (x0, y0, x1, y1, w, grey = false, g = 1) => {
-        // The source draws thin (~1 px) curves; the extra ink goes into opacity, not width.
+        // The source draws thin (~1 px) curves, so the extra ink goes into opacity.
         const a = Math.min(1, Math.abs(w)), lw = 0.7 + 0.4 * a, ink = g * (0.5 + a) / lw;
         if (a < 0.04) return;
         ctx.strokeStyle = grey ? `rgba(150,150,150,${0.25 + 0.4 * a})`
@@ -191,7 +190,7 @@ export default {
         link(519, ROW(j), 787, ROW(k2), w, false, phase2 ? 2.5 * table(L2_STEP, t) : 2.0);
       }
       // Output links stay neutral grey through the reset; after "Discretize" they darken
-      // in epoch steps to the per-row shades measured on the original (mostly grey).
+      // in epoch steps to per-row shades (mostly grey).
       const pOut = phase2 ? table(OUT_STEPS, t) : 0;
       for (let k2 = 0; k2 < NN; k2++) {
         if (pOut <= 0) { link(813, ROW(k2), 1100, 550, 0.6, true); continue; }
@@ -309,7 +308,7 @@ export default {
       ctx.font = '300 40px Roboto';
       ctx.textBaseline = 'alphabetic';
       ctx.fillStyle = 'rgb(20,20,22)';
-      // Word onsets re-measured per frame (ink in the lyric box); each fades in over 0.04 s.
+      // Word onsets; each fades in over 0.04 s.
       const words = [['I’ve', 0], ['studied', 177.812], ['how', 179.152], ['to', 179.422], ['properly', 179.668]];
       let x = 1099;
       const sp = ctx.measureText(' ').width;

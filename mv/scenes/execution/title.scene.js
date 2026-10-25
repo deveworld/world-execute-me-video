@@ -1,8 +1,8 @@
 // 161.667–162.683 · "Execution" title card. A ghost of the word (white at ~12 %) on blue; the
 // syllables Ex·e·cu·tion light up one by one, each opening as a band from the split line
 // (y = 540) outwards; at "cu" a hairline appears across the screen and the word splits along
-// it, upper half rising and lower half dropping by 8 px. Each native outline is fitted to
-// the measured letter box; mixed heavy faces retain the rounded dot and angled terminals.
+// it, upper half rising and lower half dropping by 8 px. Each outline is scaled to
+// the original's letter box; mixed heavy faces keep the rounded dot and angled terminals.
 import { loadExecFonts } from './lib/fonts.js';
 import { guarded } from './lib/ctx2d.js';
 
@@ -23,8 +23,8 @@ const GLYPHS = [
  ['o','900 100px "X Archivo"',[1362,1533,455,598]],
  ['n','900 100px "X Montserrat Black"',[1552,1708,455,596]],
 ];
-// Band extent [above, below] the split line on the frames after each syllable's reveal starts, measured
-// per syllable on the original (V3); the last entry holds.
+// Band extent [above, below] the split line on the frames after each syllable's reveal starts; the last
+// entry holds.
 const FULL = [999, 999];
 const REVEAL = [
   [[73, 28], [120, 46], FULL],

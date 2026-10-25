@@ -4,7 +4,7 @@ import { PLOT, U, MONO, SERIF } from './const.js';
 import { clamp, prog, marker, ease } from './draw.js';
 import { el, baselineOf } from './text.js';
 
-// ring sweep of the ε-lens in degrees (measured every frame, 42.70–43.035)
+// ring sweep of the ε-lens in degrees (per frame, 42.70–43.035)
 const SWEEP = [[42.70, 0], [42.717, 30], [42.75, 70], [42.8, 120], [42.85, 180], [42.9, 250],
   [42.95, 300], [43.0, 330], [43.035, 360]];
 function tableLerp(tab, t) {
@@ -60,7 +60,7 @@ export function createLimit({ root }) {
     ctx.fillText('x → ∞', 1801, 696);
     ctx.textAlign = 'left';
 
-    // ε-lens (measured): its contents come up at 42.68, the ring is drawn anticlockwise from
+    // ε-lens: its contents come up at 42.68, the ring is drawn anticlockwise from
     // 3 o'clock (42.70–43.035), and the asymptote (dashed) and the curve (solid) close in on the
     // lens centre symmetrically, the gap shrinking ~exponentially (67 px at 42.75 → 4 px at 44.4)
     const lens = prog(t, 42.68, 0.06);

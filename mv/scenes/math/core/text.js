@@ -1,4 +1,4 @@
-// DOM typography preserves the serif's per-letter reveal timing and baseline metrics.
+// DOM text of the math verses: per-letter reveals on exact baselines.
 import { TYPE, MONO, SERIF, COL } from './const.js';
 
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));

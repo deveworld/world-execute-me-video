@@ -1,4 +1,4 @@
-// math/points — see core/renderer.js: all four math verses share one pure renderer.
+// math/points — see core/renderer.js: all four math verses share one renderer.
 import { createRenderer } from './core/renderer.js';
 
 export default {

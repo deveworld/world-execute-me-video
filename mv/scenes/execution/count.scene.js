@@ -1,8 +1,8 @@
 // 158.933–161.667 · Counting 1–6 in six languages, one typographic card per beat-ish cut:
 // 1 Ein (de, blackletter) · DOS 2 (es, slab) · 3 Trois (fr, didone) · 넷 (ko) · 5 fem (sv,
 // geometric) · 六 liu (zh, brush in a tianzige box). Every card enters ~4 % zoomed in and settles
-// exponentially (≈0.58 per frame), like the original. Text is fitted to the ink boxes measured on
-// the original frames, so position and size match even where the font is a substitute.
+// exponentially (≈0.58 per frame). Text is scaled to the original's ink boxes, so position and size
+// match even where the font is a substitute.
 import { loadExecFonts } from './lib/fonts.js';
 import { guarded } from './lib/ctx2d.js';
 
@@ -35,7 +35,7 @@ const CARDS = [
     bar: { x: 580, y: 474, w: 760, h: 16, color: '#c1afda', p: [0, 0, 0.2, 0.62, 0.82, 0.91, 0.96, 0.98, 0.99, 1] },
   },
   {
-    f0: 9644, bg: '#172128', fg: '#9cbcca', zoom: 0.0405, cx: 130, // V3: zooms about the left margin (x≈130), 4 % (was 7.9 % about the centre)
+    f0: 9644, bg: '#172128', fg: '#9cbcca', zoom: 0.0405, cx: 130, // zooms 4 % about the left margin (x≈130)
     rules: [[120, 196, 1680, 1, '#e3eef5']],
     texts: [['5', '300 100px "X Jost"', [961, 1429, 241, 940]], ['fem', '500 100px "X Jost"', [121, 496, 733, 933]],
       ['sv', '600 100px "X Jost"', [121, 147, 158, 172]]],

@@ -1,10 +1,10 @@
 // DEC VT terminal on a dark CRT (VT100 / VT220 / VT320 / VT420 screens of the segment).
 // Layers, drawn flat into the CRT content canvas:
-//   1. the glass background: near-black with two soft reflections (fitted to the original:
-//      base 4.4 + 12.4·G(467,212; 824x286) + 5.0·G(1484,885; 540x200), grey levels),
+//   1. the glass background: near-black with two soft reflections
+//      (base 4.4 + 12.4·G(467,212; 824x286) + 5.0·G(1484,885; 540x200), grey levels),
 //   2. text glow (blurred copy of the text layer),
-//   3. the text: VT323 (substitute for the DEC VT2xx/3xx ROM font) on an affine grid fitted to
-//      the original (the screen is filmed slightly rotated), with scanline modulation.
+//   3. the text: VT323 (substitute for the DEC VT2xx/3xx ROM font) on an affine grid (the screen
+//      is filmed slightly rotated), with scanline modulation.
 // The shared CRT pass then cuts the curved glass outline.
 import { createCRT } from './crt.js';
 import { addLabel } from './label.js';

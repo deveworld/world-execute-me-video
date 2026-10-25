@@ -1,5 +1,5 @@
 // VT323 terminal text in content coordinates (1920x1080 flat frame that the CRT shows).
-// Measured on the original: advance 25.0 px (VT323 at 62.5 px), baseline of row n at 105 + 60.07·n,
+// Grid: advance 25.0 px (VT323 at 62.5 px), baseline of row n at 105 + 60.07·n,
 // ink starts at x ≈ 62.5. Big text is 2x (125 px).
 
 export const FONT = 'VT323';
@@ -53,7 +53,7 @@ export function drawMono(ctx, s, x, y, scale = 1) {
   }
 }
 
-// block cursor at column `col` of a row with baseline y (measured: top = y-33, bottom = y+12; big: -70/+19)
+// block cursor at column `col` of a row with baseline y (top = y-33, bottom = y+12; big: -70/+19)
 export function drawCursor(ctx, x, y, col, scale = 1) {
   const adv = ADV * scale;
   const top = scale > 1 ? y - 70 : y - 33.5;

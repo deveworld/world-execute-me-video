@@ -90,7 +90,7 @@ export default {
         el.sub.textContent = t + 1e-7 >= 6934 / 60 ? 'Mara Quinn, You' : 'Mara Quinn, Tobias Lund, You';
         el.caret.style.visibility = caretOn(t) ? 'visible' : 'hidden';
         // shared-element move of the title toward the centred iMessage title during the outgoing wipe
-        // measured: left edge +0, 88, 168, 235, 287, 327 px and top +0, 2, 4, 6, 7, 8 px on frames 6962-6967
+        // left edge +0, 88, 168, 235, 287, 327 px and top +0, 2, 4, 6, 7, 8 px on frames 6962-6967
         const m = titleEase(t);
         el.title.style.transform = `translate(${titleGlide(t).toFixed(2)}px, ${(10.3 * m).toFixed(2)}px)`;
       },

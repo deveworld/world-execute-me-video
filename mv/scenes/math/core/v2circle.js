@@ -12,7 +12,7 @@ const STEPS = [[33.883, 12], [34.35, 24], [34.817, 48], [35.267, 96], [35.85, In
 const HEX = { x: 959.5, y: 649.5, r: 300 * Math.sqrt(2 / 3) };
 
 export function polyState(t) {
-  const mv = ease.inOutSine(prog(t, 33.6175, 1.62));   // fitted on the polygon centre, 33.8–35.2 (≤ 1 px)
+  const mv = ease.inOutSine(prog(t, 33.6175, 1.62));
   return {
     x: lerp(HEX.x, CIRC.x, mv),
     y: lerp(HEX.y, CIRC.y, mv),
@@ -166,11 +166,11 @@ export function createCircle({ root }) {
   }
 
   function drawKeyword(t) {
-    const out = 1 - prog(t, 37.02, 0.083);   // measured: full until 37.02, gone at 37.103
+    const out = 1 - prog(t, 37.02, 0.083);   // full until 37.02, gone at 37.103
     if (t < 36.38 || out <= 0) { kw.style.display = 'none'; return; }
     kw.style.display = '';
     kw.style.opacity = out.toFixed(3);
-    const R = CIRC.r + 9.5;               // measured baseline radius
+    const R = CIRC.r + 9.5;               // baseline radius
     const gap = -0.5;
     const total = widths.reduce((s, w) => s + w, 0) + gap * (widths.length - 1);
     let acc = 0;

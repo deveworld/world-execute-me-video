@@ -8,8 +8,8 @@ import { guarded } from './lib/ctx2d.js';
 
 const F = (f) => (f - 0.5) / 60;
 const T0 = 9092;                 // cut (151.533)
-const OUT = 9094, PROMPT = 9124, CURSOR_OFF = 9138;   // V3: cursor still on at 9137 in the original
-const X0 = 349, X1 = 1571, Y0 = 151, Y1 = 929;   // fitted inner raster (undistorted px)
+const OUT = 9094, PROMPT = 9124, CURSOR_OFF = 9138;   // the cursor is still on at 9137
+const X0 = 349, X1 = 1571, Y0 = 151, Y1 = 929;   // inner raster (undistorted px)
 const CW = (X1 - X0) / 40, CH = (Y1 - Y0) / 25;
 const BORDER = '#53498a', SCREEN = '#322868', INK = '#5f579b';
 
@@ -21,7 +21,8 @@ export default {
     const crt = createCRT(root, env, {
       k: [-0.02, -0.0737], distort: 1, glass: GLASS.glass, radius: GLASS.radius, kg: GLASS.kg,
       rim: GLASS.rim, rimRadius: GLASS.rimRadius, kr: GLASS.kr, outside: GLASS.outside,
-      rimTop: [15.6, 14, 17.1].map((v) => v / 255), // V3: low-order shading fitted to the original (orig ≈ ours × field), per channel
+      rimTop: [15.6, 14, 17.1].map((v) => v / 255),
+      // per-channel low-order shading field: the original ≈ ours × field
       shade: [[0.9904, 0.9927, 0.9874], [0.0044, 0, 0.0253], [0.0178, 0.0099, 0.0531], [0.3335, 0.3872, 0.2376], [0.7127, 0.7532, 0.5248], [-6.1678, -6.3234, -5.2068]],
       rimBot: [11.1, 9.9, 12.8].map((v) => v / 255),
       scan: [3.876, 0.354, 1.8967], mask: [0, 3, 3], monoScan: 1,

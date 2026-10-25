@@ -1,4 +1,4 @@
-// A real canvas calendar, with vector marker writing and a travelling light/dark wipe.
+// A canvas calendar with vector marker writing and a travelling light/dark wipe.
 import {clamp,lerp,prog,ease} from './lib.js';
 import {INK_PATHS} from './calendar_ink.js';
 import {TracedStrokes,loadStrokes} from './strokes.js';
@@ -10,15 +10,15 @@ const EVENTS=[
   [21,22.5,'9:00 – 10:30 PM',94.27],
 ];
 const TIME_Y = h => 226.5+(h-6)*40;
-// Measured: hour rows reveal one 1/8 beat apart; each rule sweeps left->right (outExpo, 17 frames)
+// Hour rows reveal one 1/8 beat apart; each rule sweeps left->right (outExpo, 17 frames)
 // while its label rises from 1/3 to full opacity.
 const ROW0=92.0513, ROWSTEP=0.0577;
 const outExpo=k=>k>=1?1:1-Math.pow(2,-10*k);
 // Event bars land every ~7 frames; their text fades in 2.4..8 frames later.
 const BAR0=5599.3, BARSTEP=7.02;
-// AM suffixes turn blue in a quick top-down cascade, 12 PM later (frames, measured).
+// AM suffixes turn blue in a quick top-down cascade, 12 PM later (frames).
 const AM_BLUE=[5658,5660,5662,5664,5665,5667,5717];
-// Hand-drawn arrow down the right margin (pen centre y per frame, measured).
+// Hand-drawn arrow down the right margin (pen centre y per frame).
 const ARROW_Y=[[5725.5,266],[5726,269.5],[5727,306.5],[5728,352.5],[5729,402.5],[5730,460.5],[5731,519.5],[5732,580.5],[5733,641.5],[5734,702.5],[5735,758.5],[5736,810.5],[5737,854.5],[5738,884]];
 const ARROW_X=[[266,1720],[310,1720.5],[390,1721.5],[470,1722.5],[550,1723],[630,1723],[690,1722.5],[770,1721.5],[830,1720.5],[884,1719.5]];
 const lerpTab=(tab,x)=>{if(x<=tab[0][0])return tab[0][1];for(let i=1;i<tab.length;i++)if(x<=tab[i][0]){const[a,va]=tab[i-1],[b,vb]=tab[i];return va+(vb-va)*(x-a)/(b-a);}return tab[tab.length-1][1];};
@@ -34,10 +34,10 @@ export default {
     const pen=new TracedStrokes(await loadStrokes('calendar_pen'),{width:16,color:'#fff',dotR:8,dotHold:.018});
     const completed=await(await fetch(new URL('./data/calendar_completions.json',import.meta.url))).json();
     const markers=await(await fetch(new URL('./data/calendar_marker.json',import.meta.url))).json();
-    // The detector jittered by 1 px; the real marker only moves down. It also exists (sweeping in) from frame 5581.
+    // The marker only moves down, so its tracked y (1 px jitter) is made monotonic; from frame 5581 it sweeps in at 266.5.
     {let m=-1;for(const r of markers){if(r[0]>=5581&&r[1]===null)r[1]=266.5;if(r[1]!==null){m=Math.max(m,r[1]);r[1]=m;}}}
     const EV_END=[8.5,10,11.5,13,15,17,18.5,20.5,22.5];
-    // Past events dim once the marker settles on the next full hour row (measured 7-frame fade).
+    // Past events dim once the marker settles on the next full hour row (7-frame fade).
     const dimStart=EV_END.map(b=>{const y=TIME_Y(Math.ceil(b))-2;const r=markers.find(r=>r[1]!==null&&r[1]>=y);return r?r[0]/60:1e9;});
     const inkC=document.createElement('canvas');inkC.width=1920;inkC.height=1080;const ic=inkC.getContext('2d');
     const penC=document.createElement('canvas');penC.width=1920;penC.height=1080;const pc=penC.getContext('2d');
@@ -112,7 +112,7 @@ export default {
     };
     return {render(t){
       draw(ctx,t,false);
-      // Dark wipe edge eased like the source (inOutSine fit to the measured edge row, max error 5 px).
+      // Dark wipe edge, eased with inOutSine.
       const we=-117.6+1276.5*ease.inOutSine(prog(t,5716/60,23.3/60)), k=t>=95.29?1:0;
       if(k>0){draw(dc,t,true);mc.clearRect(0,0,1920,1080);mc.drawImage(darkC,0,0);mc.globalCompositeOperation='destination-in';const yy=we+29,g=mc.createLinearGradient(0,yy-115,0,yy+115);g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,0)');mc.fillStyle=g;mc.fillRect(0,0,1920,1080);mc.globalCompositeOperation='source-over';ctx.drawImage(maskC,0,0);}
     }};

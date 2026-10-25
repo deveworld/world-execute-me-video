@@ -23,7 +23,7 @@ export default {
   for(let j=0;j<80;j++) {c.fillText(String(j+1),372+j*14.62,253);c.fillText(String(j+1),372+j*14.62,632);}
   c.fillStyle='#030401';
   for(const[y,cols]of HOLES)for(const j of cols){c.fillRect(367.3+j*14.62,y,9.4,20.7);}
-  // The small interpreter line is a 5x7 dot matrix (V3: single-dot strokes, '(' ')' printed as '<' '>',
+  // The small interpreter line is a 5x7 dot matrix (single-dot strokes, '(' ')' printed as '<' '>',
   // ',' as a short slash, as on the original card).
   const M57={C:'01110100011000010000100001000101110',A:'01110100011000110001111111000110001',L:'10000100001000010000100001000011111',
    E:'11111100001000011110100001000011111',X:'10001100010101000100010101000110001',U:'10001100011000110001100011000101110',

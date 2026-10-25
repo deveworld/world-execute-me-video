@@ -1,4 +1,4 @@
-// Eye outline data measured on the reference (1080p): lid ridges tracked column by column.
+// Eye outline data (1080p): lid ridges per column.
 // Curves are polylines through these points (drawn with Catmull-Rom smoothing).
 
 export const CORNER_L = [692, 557];
@@ -41,9 +41,8 @@ export const CREASE_CLOSED_B = [
   [1310, 610], [1360, 609], [1410, 605], [1460, 597], [1510, 587], [1560, 573], [1610, 557],
 ];
 
-// resample a measured polyline at the given x positions (assumes x increasing). Cubic Hermite through
-// the measured points (tangents from neighbouring chords), so the steep lid ends near the eye corners
-// stay round instead of showing the kinks of linear interpolation.
+// resample a polyline at the given x positions (assumes x increasing). Cubic Hermite through the
+// points (tangents from neighbouring chords) keeps the steep lid ends near the eye corners round.
 export function sampleAtX(pts, xs) {
   const n = pts.length, slope = (i) => (pts[i + 1][1] - pts[i][1]) / Math.max(1e-6, pts[i + 1][0] - pts[i][0]);
   const tan = pts.map((_, i) => (i === 0 ? slope(0) : i === n - 1 ? slope(n - 2) : (slope(i - 1) + slope(i)) / 2));

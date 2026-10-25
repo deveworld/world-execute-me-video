@@ -1,4 +1,4 @@
-// Shared helpers for the `love` segment (169.958333–193.600). Not a scene.
+// Shared helpers for the `love` segment (169.958333–193.600).
 import { rng } from '../../engine/lib/anim.js';
 
 export const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));

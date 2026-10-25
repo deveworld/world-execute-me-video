@@ -87,7 +87,7 @@ export default {
     return {
       render(t) {
         wipe(root, t, 112.2, [737, 564, 344, 208]);
-        // title appears at chat1's title position and settles in ~10 frames (measured 6740-6747)
+        // title appears at chat1's title position and settles in ~10 frames
         const back = titleSettle(t, 6740, 10.5);
         el.title.style.transform = back > 0 ? `translate(${(16.5 * back).toFixed(2)}px, ${(-9 * back).toFixed(2)}px)` : '';
         el.w1.style.opacity = String(wordAlpha(t, 112.287, 0.075));

@@ -1,7 +1,6 @@
 // me.execute(world): an orthographic globe (Natural Earth 110m land, vendored) slowly rotating east.
 // Coastlines are drawn as outlines; a glowing meridian sweeps westward in 30° spring-eased steps (one per
 // beat) and turns everything east of it into a dotted-land lattice. Eight cities light up with a pulse ring.
-// Geometry, rotation, lattice and timings were measured on the original (see out/escape/tools/).
 import { on, clamp, prog, ease, lerp, resetCtx } from './lib/util.js';
 
 const CX = 960.5, CY = 540.5, R = 380;
@@ -60,7 +59,7 @@ export default {
     base.width = W; base.height = H;
     {
       const g = base.getContext('2d');
-      // dark background with a broad soft glow around the globe (measured: 11 near the limb -> 5 in the corners)
+      // dark background with a broad soft glow around the globe (11 near the limb, 5 in the corners)
       const bgg = g.createRadialGradient(CX, CY, R, CX, CY, 1150);
       bgg.addColorStop(0, '#0b0a10');
       bgg.addColorStop(0.09, '#09080d');
@@ -147,8 +146,8 @@ export default {
         };
         const sweepOn = t >= STEP_T[0] - 0.05;
         const db = dbAt(t);
-        // The original reveals land behind the moving line with a lag: outlines survive ~35 ms past the line,
-        // dots grow in 20-50 ms after it, and a faint blue wake trails the line (traced on 142.38-142.47).
+        // Land is revealed behind the moving line with a lag: outlines survive ~35 ms past the line,
+        // dots grow in 20-50 ms after it, and a faint blue wake trails the line.
         const dbOutline = dbAt(t - OUTLINE_LAG);
         const dbDots = DOT_LAGS.map((l) => dbAt(t - l));
 
@@ -157,7 +156,7 @@ export default {
         ctx.strokeStyle = 'rgba(200,202,225,0.15)';
         ctx.beginPath();
         for (let lat = -75; lat <= 75; lat += 15) {
-          // parallels are crisp one-pixel rows on the original (row = floor(y - 0.5), measured for -60..60°)
+          // parallels are crisp one-pixel rows on the original (row = floor(y - 0.5))
           const p = lat * D2R, y = Math.floor(CY - R * Math.sin(p) - 0.5) + 0.5, hw = R * Math.cos(p);
           ctx.moveTo(CX - hw, y); ctx.lineTo(CX + hw, y);
         }
@@ -287,7 +286,7 @@ export default {
           const cp = Math.cos(lat);
           if (cp * Math.cos(d) <= 0) continue;
           const x = CX + R * cp * Math.sin(d), y = CY - R * Math.sin(lat);
-          // pulse ring: a flat screen-space circle growing to ~23 px and fading out (measured on the original)
+          // pulse ring: a flat screen-space circle growing to ~23 px and fading out
           if (tau < 0.6) {
             const rr = 4 + 19 * ease.outCubic(clamp(tau / 0.36));
             const a = 0.42 * (1 - clamp((tau - 0.06) / 0.54));
@@ -312,9 +311,9 @@ export default {
           ctx.fill();
         }
 
-        // footer: each sweep step lights up the next token ~23 ms after the step starts. Measured on "world"
-        // (142.85-143.0): grey (181,180,200) jumps a quarter of the way, then brightens ~linearly over 0.15 s to
-        // (245,243,255); blue leads, so the token passes through lavender.
+        // footer: each sweep step lights up the next token ~23 ms after the step starts. A token jumps a
+        // quarter of the way from grey (181,180,200), then brightens ~linearly over 0.15 s to (245,243,255);
+        // blue leads, so it passes through lavender.
         ctx.font = FOOT_FONT;
         ctx.letterSpacing = FOOT_LS;
         ctx.textAlign = 'left';
@@ -326,7 +325,7 @@ export default {
           const c = [lerp(181, 245, k), lerp(180, 243, k), lerp(200, 255, kb)];
           ctx.fillStyle = `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
           ctx.fillText(TOKENS[i], footX[i], FOOT_Y);
-          // lit tokens are set heavier on the original (~25% more ink than the grey ones): embolden with a stroke
+          // lit tokens are heavier (~25% more ink than the grey ones): embolden with a stroke
           if (k > 0) {
             ctx.strokeStyle = ctx.fillStyle;
             ctx.lineWidth = 0.45 * k;

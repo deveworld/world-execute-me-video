@@ -22,8 +22,8 @@ export const ease = {
   outBack: (k, s = 1.70158) => 1 + (s + 1) * Math.pow(k - 1, 3) + s * Math.pow(k - 1, 2),
 };
 
-// Times measured off the original are "first frame where X is visible". A frame index f is shown
-// at t = f/60, so an event recorded at frame f is active for t >= (f - 0.5)/60 — robust to float noise.
+// Event times are "first frame where X is visible". Frame f is shown at t = f/60, so an event at
+// frame f is active for t >= (f - 0.5)/60, which leaves room for float noise.
 export const at = (sec) => Math.round(sec * FPS) / FPS - 0.5 / FPS;
 export const on = (t, sec) => t >= at(sec);
 

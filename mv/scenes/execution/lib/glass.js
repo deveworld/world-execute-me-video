@@ -1,4 +1,4 @@
-// The C64/Amiga monitor glass, fitted (V3) to the original's outline at frame 9130: the bright picture is
+// The C64/Amiga monitor glass: the bright picture is
 // a distorted rounded rect with a small corner radius, surrounded by a ~11 px dim bezel lip (the rim)
 // whose outline has a much larger radius. Both outlines bow with their own barrel coefficients.
 export const GLASS = {

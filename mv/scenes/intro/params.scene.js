@@ -1,7 +1,7 @@
 // "Fill in my data parameters / INITIALIZATION" (7.333–11.133).
-// Superformula editor: six sliders drive a Gielis curve on a polar grid; the parameter timeline,
-// knob log-scale, morph models (radial lerp, "pop" through a circle when m changes), the 9.43 s
-// rotation, the 1→2→4→8→16 cell division and the 4x4 shape grid were all measured off the original.
+// Superformula editor: six sliders drive a Gielis curve on a polar grid, with log-scale knobs, two
+// morphs (radial lerp, and a "pop" through a circle when m changes), the 9.43 s rotation, the
+// 1→2→4→8→16 cell division and the 4x4 shape grid.
 import { clamp, lerp, prog, ease, oexp, table, mix, rgb, paperBackground } from './lib/util.js';
 import { N, radii, CIRCLE, blend, pop, radiusAt, tracePath } from './lib/sf.js';
 
@@ -46,7 +46,7 @@ function paramValue(row, t) {
   }
   return v;
 }
-// Most recent "hot" change (not the first fill) for knob tint.
+// Most recent "hot" change after the first fill, for the knob tint.
 function hotAge(row, t) {
   const keys = KEYS[row];
   let age = Infinity;
@@ -56,7 +56,7 @@ function hotAge(row, t) {
 
 // ---------------------------------------------------------------- shape states
 // Each state: radii, rotation. Transitions: 'lerp' (radial blend) or 'pop' (m changed).
-const ROT_TABLE = [ // measured rotation (deg) of the m=6 star, frames 566..593
+const ROT_TABLE = [ // rotation (deg) of the m=6 star, frames 566..593
   [9.4333, 0], [9.45, 0.5], [9.4667, 1.5], [9.4833, 3], [9.5, 5], [9.5167, 7.5], [9.5333, 9.5], [9.55, 12],
   [9.5667, 14], [9.5833, 16], [9.6, 18], [9.6167, 19.5], [9.6333, 21], [9.65, 22.5], [9.6667, 23.5],
   [9.6833, 24.5], [9.7, 25.5], [9.7167, 26.2], [9.7333, 27], [9.75, 27.5], [9.7667, 28], [9.7833, 28.4],
@@ -140,7 +140,7 @@ const isCopyAt = (gen, idx) => {
   return false;
 };
 
-// Final grid shapes (fitted per cell): [m, n1, n2=n3, rot]
+// Final grid shapes: [m, n1, n2=n3, rot]
 const CELL = [
   [4, 0.922, 3.939, 0.785], [4, 11.708, 11.708, 0.785], [4, 16.834, 34.802, 0.785], [4, 0.535, 0.535, 0],
   [6, 0.922, 3.939, 0], [6, 41.73, 20.186, 0], [6, 16.834, 34.802, 0], [6, 0.535, 0.535, 0.5236],
@@ -179,10 +179,10 @@ export default {
     const { W, H } = env;
     const { ctx } = env.canvas(root);
     const bg = paperBackground(W, H);
-    // Measured radial outlines during the short 4×4 morph. This corrects the differing
-    // per-cell pop times and rounded intermediate shapes; values are numerical geometry.
+    // Radial outlines during the short 4×4 morph: the cells pop at different times and pass
+    // through rounded intermediate shapes.
     const cellData = await env.loadJSON('/scenes/intro/lib/cell-radii.json');
-    // superformula transition frames fitted to the source: frame -> [m, n1, n2, n3, rotation, scale]
+    // superformula transition frames: frame -> [m, n1, n2, n3, rotation, scale]
     const sfFit = (await env.loadJSON('/scenes/intro/lib/sf-fits.json')).frames;
     const lettering=await env.loadJSON('/scenes/intro/lib/precision-lettering.json');
     const headingPaths=Object.fromEntries(Object.entries(lettering.heading).map(([k,v])=>[k,new Path2D(v)]));
@@ -251,7 +251,7 @@ export default {
         const y = ROW_Y[row];
         ctx.save();
         ctx.globalAlpha = a;
-        // Static labels retain their measured outlines and exact baselines.
+        // Static labels are drawn from their glyph outlines.
         ctx.save();ctx.translate(.5,.5);ctx.fillStyle='#000';ctx.strokeStyle='#000';ctx.lineWidth=.8;ctx.fill(labelPaths[row],'evenodd');ctx.stroke(labelPaths[row]);ctx.restore();
         // track
         ctx.fillStyle = 'rgb(185,185,185)';
@@ -331,7 +331,6 @@ export default {
       return [42 * up * Math.exp(-dt / 0.12), 35 * up * Math.exp(-dt / 0.12), 100 * up * Math.exp(-dt / 0.2)];
     }
 
-    // the source's curve centre is (1312, 600.0) (measured radial offset: -1.0 px in x, +0.5 px up)
     const CX = 1312, CY = 600;
     function drawBigCurve(t) {
       const fit = sfFit[Math.round(t * FPS)];
@@ -373,7 +372,7 @@ export default {
       }
       ctx.save();
       ctx.lineJoin = 'round';
-      // measured stroke weight per phase (source ink relative to a 1.9 px line: 0.85, 0.68, then 0.95)
+      // stroke weight per phase (relative to a 1.9 px line: 0.85, 0.68, then 0.95)
       const fr = Math.round(t * FPS);
       ctx.lineWidth = fr < 630 ? 1.6 : fr < 649 ? 1.3 : 1.8;
       for (const idx of reps) {
@@ -387,8 +386,8 @@ export default {
         // colour: newest copies are indigo, fading to black
         let col = BLACK;
         if (gen > 0 && isCopyAt(gen, idx)) {
-          // measured darkest stroke colour of the new copies per frame after each split, converted from the
-          // encoded (chroma-subsampled) value back to the drawn colour
+          // darkest stroke colour of the new copies per frame after each split (with the video's chroma
+          // subsampling undone)
           const tab = COPY_TAB[gen - 1], k = clamp(Math.round(t * FPS) - COPY_F0[gen - 1], 0, tab.length - 1), m = tab[k];
           col = [Math.min(255, m[0] / 0.85), Math.min(255, m[1] / 0.9), Math.min(255, m[2] / 0.63)];
         }

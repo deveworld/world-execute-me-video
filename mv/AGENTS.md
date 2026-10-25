@@ -56,12 +56,12 @@ Need another Google Font? `python3 -P -E tools/fetch_fonts.py ofl/<dir>` (folder
 | Clip with audio | `node tools/render.mjs --from A --to B --only <seg>/ --out out/<seg>/clip.mp4 --workers 2` (`--scale 0.5` for a fast preview) |
 | Validate / list scenes | `node tools/render.mjs --list --only <seg>/` |
 | Whole-video fidelity scan | `python3 -P -E tools/scan_full.py out/v3/world-execute-remake-v3.mp4 out/scan` (per-scene, per-frame and per-tile error vs the original; `tools/sheets.py <video> out/scan out/sheets` draws the worst frames) |
-| Did a change get closer? | `python3 -P -E tools/score.py out/<seg>/clip.mp4 --from A [--region x0,y0,x1,y1] [--per-frame]` (vs the original and vs the V3 render) |
+| Did a change get closer? | `python3 -P -E tools/score.py out/<seg>/clip.mp4 --from A [--region x0,y0,x1,y1] [--per-frame]` (vs the original and vs the full render in `out/v3/`) |
 | Original above ours, many times | `python3 -P -E tools/pairs.py --from A --to B --step 0.25 --out out/<seg>/pairs.jpg [--video clip.mp4 --clip-from A] [--diff]` |
 | Event timing per tile | `python3 -P -E tools/event_lags.py <video> out/events` (early/late/missing changes vs the original) |
 | Determinism | `python3 -P -E tools/determinism.py out/determinism` (same times in three orders must give identical PNGs) |
 
-Exit code 2 means a scene threw: the error is printed and drawn over the scene in the frame. Python: use `python3 -P -E` (not `-I`; cv2/numpy live in user site-packages). Sample colours from reference frames with cv2 rather than guessing.
+Exit code 2 means a scene threw: the error is printed and drawn over the scene in the frame. Python: use `python3 -P -E`; cv2/numpy live in user site-packages, which `-I` hides. Sample colours from reference frames with cv2.
 
 ## Working loop
 
@@ -74,7 +74,7 @@ Exit code 2 means a scene threw: the error is printed and drawn over the scene i
 
 - Write only inside `scenes/<your segment>/`, `out/<your segment>/`, and new font folders created with `tools/fetch_fonts.py`. Don't edit `engine/`, `tools/`, `assets/` files that exist, other segments, or `AGENTS.md`. If the engine is missing something, work around it inside your segment and say so in your report.
 - Your scenes must cover your assigned range(s) exactly — first `start` = range start, last `end` = range end, no gaps. Overlaps are allowed only between your own scenes.
-- Other agents render at the same time on 8 cores and one iGPU: use `--workers 2` at most, iterate with stills/compare rather than full clips, and never kill processes you didn't start.
+- Other agents render at the same time on 8 cores and one iGPU: use `--workers 2` at most, iterate with stills and `compare.py` and leave full clips for the end, and never kill processes you didn't start.
 - Images cost context: prefer compare grids of 4–8 pairs at `--width 640`, crop/zoom only where you need detail.
 - No sudo, no global installs, no edits outside the project.
 

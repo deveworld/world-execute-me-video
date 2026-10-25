@@ -1,4 +1,4 @@
-// Time-stamped polylines (vectorised from the reference by out/existence/trace.py) drawn as a write-on.
+// Time-stamped polylines, drawn as a write-on.
 // data = { w: width, c: color, s: [[x, y, t, x, y, t, ...], ...] }; a point is drawn once t >= its time.
 export class TracedStrokes {
   constructor(data, { width, color, dotR = 0, dotHold = 0.02, tShift = 0, filter } = {}) {

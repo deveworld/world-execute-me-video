@@ -19,7 +19,7 @@ export function cardShutter(){
    if(at.x<0.||at.x>500.||at.y<0.||at.y>790.)continue;
    vec2 q=vec2(at.x/500.,1.-at.y/790.);
    vec4 col=k>=0.?texture2D(front,q):texture2D(back,q);
-   // Lambert-like falloff: a face turned away from the camera/light reads darker (measured on the turn frames).
+   // Lambert-like falloff: a face turned away from the camera/light reads darker.
    col.rgb*=.55+.45*abs(k);
    rgb+=col.rgb*col.a;alpha+=col.a;
   }

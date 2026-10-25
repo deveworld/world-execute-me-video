@@ -21,7 +21,7 @@ export function drawAxes(ctx, o) {
     ctx.moveTo(x0 - 20, y0); ctx.lineTo(xEnd, y0);
     ctx.stroke();
     if ((o.xTicks ?? 0) > 0) {
-      // ticks are much fainter than the axis line in the source (minor ≈ +30, major ≈ +65 over
+      // ticks are much fainter than the axis line (minor ≈ +30, major ≈ +65 over
       // the background); there is no tick at the 2π end
       for (const major of [false, true]) {
         ctx.globalAlpha = o.xAlpha * o.xTicks * (major ? 0.62 : 0.29);

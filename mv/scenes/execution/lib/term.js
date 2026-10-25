@@ -49,7 +49,7 @@ export class Grid {
     return this.put(row, endCol - Array.from(text).length + 1, text, style);
   }
 
-  // Set style (not characters) over [c0, c1].
+  // Set the style of columns [c0, c1], keeping their characters.
   style(row, c0, c1, style) {
     for (let c = Math.max(0, c0); c <= Math.min(this.cols - 1, c1); c++) {
       const k = row * this.cols + c;

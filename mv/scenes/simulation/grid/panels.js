@@ -16,7 +16,7 @@ const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const phaseAt=t=>PANEL_PHASES[clamp(Math.round(t*60)-PANEL_PHASES[0][0],0,PANEL_PHASES.length-1)];
 
-// "beat events" observed in the reference: level changes, ring emissions, tree generations…
+// "beat events": level changes, ring emissions, tree generations…
 export const BEATS = [59.755, 60.217, 60.683, 61.133, 61.600, 62.067, 62.517, 62.978];
 
 function dot(ctx, x, y, r, fill) {
@@ -142,7 +142,7 @@ const mandelbrot = {
           for (let sx = 0; sx < SS; sx++) {
             const cr = (x + (sx + 0.5) / SS - ox) / scale - 2, ci = (y + (sy + 0.5) / SS - oy) / scale;
             let zr = 0, zi = 0, k = 0;
-            // the reference fills the actual set (cardioid, bulbs, mini-brots), not a coarse level set
+            // fill the set itself (cardioid, bulbs, mini-brots)
             for (; k < 96; k++) {
               const t = zr * zr - zi * zi + cr;
               zi = 2 * zr * zi + ci;
@@ -221,7 +221,7 @@ const ripple = {
     for (const te of emits) {
       const r = this.v * (t - te);
       if (r < 0.5) continue;
-      const a = clamp(0.92 * Math.exp(-r / 95)); // young rings are dark, older ones fade (measured)
+      const a = clamp(0.92 * Math.exp(-r / 95)); // young rings are dark, older ones fade
       ctx.strokeStyle = `rgba(95,95,95,${a})`;
       for (const s of [this.s1, this.s2]) {
         ctx.beginPath();
@@ -300,7 +300,7 @@ const pendulum = {
 const tree = {
   setup() {
     this.branches = TREE.map(([g, x, y, x2, y2]) => ({ g, x, y, x2, y2 }));
-    // generation onsets read off the reference frames (each new generation is drawn in blue)
+    // generation onsets (each new generation is drawn in blue)
     this.gens = [3592, 3613, 3641, 3668, 3696, 3724, 3751, 3779].map((f) => (f - 0.5) / 60);
     this.widths = [2.4, 2.1, 1.9, 1.6, 1.35, 1.15, 1.0];
   },
@@ -396,7 +396,7 @@ const langton = {
     for (let s = c.n; s < n; s++) c.grid[this.flips[s]] ^= 1;
     c.n = n;
     const G = this.G, cell = 3;
-    // The source's lattice is exactly 3 px; the initial state is held before the first speed pulse.
+    // The lattice is 3 px; the initial state is held before the first speed pulse.
     const ox = 122.5, oy = 83.5;
     for (let i = 0; i < G * G; i++) {
       if (!c.grid[i]) continue;
@@ -484,9 +484,8 @@ const dla = {
 
 // ───────────────────────────── (j) Double pendulum ─────────────────────────────
 const dpend = {
-  // Fitted to both bobs tracked frame by frame in the reference (rms 0.22 px): unit masses and
-  // arms, g = 9.81, 0.0470 simulated seconds per frame, state at frame 3627. On every beat a small
-  // blue marker is left where the outer bob is.
+  // Unit masses and arms, g = 9.81, 0.0470 simulated seconds per frame, state at frame 3627. On every
+  // beat a small blue marker is left where the outer bob is.
   F0: 3627, S0: [2.04405, 2.75102, -0.35040, 0.14083], TAU: 0.047000, SUB: 10,
   px: 107.504, py: 89.488, L1: 39.979, L2: 39.964,
   MARKS: [3641, 3669, 3696, 3724, 3752],
@@ -542,7 +541,7 @@ const dpend = {
 
 // ───────────────────────────── (k) Abelian sandpile ─────────────────────────────
 const sandpile = {
-  // Measured: ~600 grains are dropped on the centre on each beat; the avalanche spreads over ~8 frames
+  // ~600 grains are dropped on the centre on each beat; the avalanche spreads over ~8 frames
   // with the cells that just toppled tinted blue, and the tint clears ~17 frames after the beat.
   // 3 px cells; levels 0..3 drawn white / light grey / grey / dark grey.
   setup() {
@@ -550,7 +549,7 @@ const sandpile = {
     this.G = G;
     this.beats = [3641, 3669, 3697, 3724, 3752];
     this.clear = [3659, 3686, 3714, 3742, 3769];
-    const grains = [725, 650, 785, 640, 790]; // fitted to the pile area after each beat
+    const grains = [725, 650, 785, 640, 790]; // grains dropped on each beat
     const grid = new Int32Array(G * G);
     this.av = [];
     for (let b = 0; b < this.beats.length; b++) {
@@ -646,8 +645,8 @@ const kuramoto = {
       dot(ctx, x, y, 2.8, INK);
       sx += Math.sin(a); sy += Math.cos(a);
     }
-    // Merged oscillators were observed as fewer blobs: fill the gaps inside a cluster so it reads as
-    // the reference's continuous thick arc.
+    // Merged oscillators show as fewer blobs: fill the gaps inside a cluster so it reads as one
+    // continuous thick arc.
     const sorted = th.slice().sort((a, b) => a - b);
     for (let i = 1; i < sorted.length; i++) {
       const a0 = sorted[i - 1], a1 = sorted[i];
@@ -658,7 +657,7 @@ const kuramoto = {
     const R = Math.hypot(sx, sy), L = R * (r - 8);
     let ex = observed[6][0]+.5, ey = observed[6][1]+.5;
     if (t * 60 >= 3749.5 && R > 0) {
-      // the arrow observation was lost once the frame turned blue: point it at the cluster instead
+      // the tracked arrow angle ends when the frame turns blue: point it at the cluster
       ex = cx + (L * sx) / R; ey = cy - (L * sy) / R;
     }
     line(ctx, cx, cy, ex, ey, ACCENT, 1.3);
@@ -680,14 +679,6 @@ const kuramoto = {
 const chladni = {
   setup() {
     const R = makeRng(3), N = 1300;
-    const A = (u, v) => {
-      const d = Math.cos(Math.PI * u * 0.5 * 2 / 2 * 2) ; // unused placeholder
-      return d;
-    };
-    const amp = (u, v) => {
-      const diamond = Math.cos((Math.PI * u) / 2 * 2 / 2 * 2) ; // placeholder replaced below
-      return diamond;
-    };
     const f = (u, v) => {
       const dmd = Math.abs(u) + Math.abs(v) - 0.97;
       const circ = Math.hypot(u, v) - 0.345;
@@ -707,13 +698,12 @@ const chladni = {
         return [nu, nv];
       });
     }
-    void A; void amp;
   },
   draw(ctx, tau, t) {
     ctx.strokeStyle = INK;
     ctx.lineWidth = 1.2;
     ctx.strokeRect(33.5, 16.5, 150.5, 150);
-    // The plate is driven in bursts on the beats (~8 frames each, measured); the sand holds still between.
+    // The plate is driven in bursts on the beats (~8 frames each); the sand holds still between.
     const F = t * 60, B = [3668, 3696, 3724, 3751], I = [0, 10, 22, 45, 90];
     let idx = 0;
     for (let b = 0; b < B.length; b++) {
@@ -782,7 +772,7 @@ const galton = {
       dot(ctx, p[0], p[1], 2.1, INK);
     }
     void landed;
-    // the fitted normal curve rises steadily as the bins fill (measured peak height)
+    // the fitted normal curve rises steadily as the bins fill
     const H = 3 + 30 * clamp((t - 61.15) / 1.75);
     ctx.beginPath();
     for (let x = 40; x <= 177; x += 1) {
@@ -898,8 +888,7 @@ function lorenzPath(n, dt, start = [1, 1, 1], skip = 0) {
   return out;
 }
 const lorenz2d = {
-  // Fitted to the dot tracked frame by frame in the reference (rms 0.55 px): the state at frame 3668,
-  // Lorenz time per frame and an x–z projection. The grey attractor is the same orbit run ahead.
+  // State at frame 3668, Lorenz time per frame and an x–z projection. The grey attractor is the same orbit run ahead.
   F0: 3668, S0: [0.17258, 1.68945, 21.58063], TPF: 0.028144, SUB: 8,
   PRJ: { cx: 107.479, kx: 3.1590, my: -0.0081, cy: 168.731, kz: 3.1528 },
   setup() {
@@ -943,8 +932,8 @@ const brownian = {
     const R = makeRng(13);
     const pts = [BROWNIAN_ANCHORS[0].slice(1)];
     const SUB = 8;
-    // A fine Brownian bridge joins each measured 60 Hz cursor position. Coarse samples remain
-    // the independent half-beat polyline, rather than oversampling that line every few pixels.
+    // A fine Brownian bridge joins the 60 Hz cursor positions; the coarse samples form a separate
+    // half-beat polyline.
     const heads = [pts[0], ...BROWNIAN_HEADS];
     for (let i = 0; i < heads.length - 1; i++) {
       const a = heads[i], b = heads[i + 1], walk = [[0,0]];
@@ -978,7 +967,7 @@ const brownian = {
 
 // ───────────────────────────── (r) Kepler orbit ─────────────────────────────
 const kepler = {
-  // period and perihelion time fitted to the planet tracked frame by frame (rms 0.004 rad)
+  // period and perihelion time
   cx: 99.8, cy: 90, a: 82.5, b: 60, T: 3.22497, tPeri: 62.51367,
   pos(t) {
     const e = Math.sqrt(1 - (this.b * this.b) / (this.a * this.a));
@@ -1056,7 +1045,7 @@ const figure8 = {
     return [108.3 + (p[0] + (q[0] - p[0]) * f) * 88, 90 - (p[1] + (q[1] - p[1]) * f) * 88];
   },
   draw(ctx, tau, t) {
-    // phase and period fitted to the blue body tracked frame by frame (rms 0.0014 of a period)
+    // phase and period of the blue body
     const Tp = 2.78619, u0 = 0.29631;
     const u = u0 + (t - 61.483) / Tp;
     for (let b = 0; b < 3; b++) {
@@ -1111,7 +1100,7 @@ const lotka = {
       ctx.stroke();
     });
     const m = this.main, n = m.length;
-    // one lap per beat; phase fitted to the dot tracked in the reference
+    // one lap per beat
     const per = 0.46155;
     const u = ((t - 61.60) / per + 0.25354) % 1;
     const head = Math.floor((((u % 1) + 1) % 1) * n);
@@ -1126,7 +1115,7 @@ const lotka = {
 
 // ───────────────────────────── (u) Lissajous figures ─────────────────────────────
 const lissajous = {
-  // Fitted to the dot tracked frame by frame in the reference: one turn per 16th note, the frequency
+  // One turn per 16th note, the frequency
   // ratio steps 1:1 → 2:1 → 3:2 on the beat and every new figure starts its trace afresh.
   // s = 2π·frame/T;  x = cx + A sin(a s + px),  y = cy + B sin(b s + py)
   phases: [
@@ -1160,7 +1149,7 @@ const lissajous = {
 
 // ───────────────────────────── (v) Wave on a string ─────────────────────────────
 const wave = {
-  // Measured pulse centre, spatial width and damping, including both fixed-end reflections.
+  // Pulse centre, spatial width and damping, including both fixed-end reflections.
   c: 532.148653, x0: 17.4, x1: 201.3, y0: 95.987283,
   width: 18.119587, amplitude: 29.834358, reflection: 0.713526,
   pulses: [62.054163, 62.516271],
@@ -1222,7 +1211,7 @@ const projectile = {
         ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
       }
       if (el < T) {
-        // The fitted video centroids index pixels; canvas geometry locates their centres at +0.5.
+        // The tracked centroids are pixel indices; pixel centres sit at +0.5 in canvas space.
         const x = 0.5 + s.x0 + s.vx * el, y = 0.5 + s.y0 - s.vy * el + 0.5 * s.g * el * el;
         dot(ctx, x, y, 3.5, INK);
       } else {
@@ -1246,7 +1235,7 @@ const projectile = {
 
 // ───────────────────────────── (x) Ideal gas ─────────────────────────────
 const gas = {
-  // Fast molecules (10–25 px per frame, as measured): each frame shows a small dot and a grey streak
+  // Fast molecules (10–25 px per frame): each frame shows a small dot and a grey streak
   // back to where it was a frame earlier, folded at the walls.
   setup() {
     const R = makeRng(17), N = 56;

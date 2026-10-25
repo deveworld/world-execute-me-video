@@ -3,7 +3,7 @@
   python3 -P -E tools/pairs.py --from 85 --to 89 --step 0.25 --out out/pairs.jpg
   python3 -P -E tools/pairs.py --times 85.9,86.3 --width 640 --video out/clip.mp4 --clip-from 85 --out x.jpg
 
-By default "ours" is out/v3/world-execute-remake-v3.mp4 (the V3 render).
+By default "ours" is the full render out/v3/world-execute-remake-v3.mp4.
 With --video CLIP --clip-from A it reads a clip rendered by render.mjs --from A instead (frame i = song frame round(A*60)+i).
 Each cell: ORIGINAL on top, OURS below, |diff|x3 strip optional with --diff.
 """

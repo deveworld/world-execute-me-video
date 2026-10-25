@@ -8,12 +8,10 @@ import { SERIF_PATHS } from './heart/serif-paths.js';
 import { EQUATION_PATHS } from './heart/equation-paths.js';
 
 const W = 1920, H = 1080;
-// Heart placement measured on the original: origin (between cusp and tip) and pixels per unit.
-// Heart origin/scale (canvas px; curve y up). Re-fitted to the original's outline ridge at 97 points
-// (186-193.6): the previous origin sat ~0.6 px left and ~1.2 px high.
+// Heart origin (between cusp and tip) and pixels per unit (canvas px; curve y up).
 const P0 = { x: 700.0, y: 586.0, S: 352 };
 const P1 = { x: 1120.45, y: 559.45, S: 181.75 };
-// Progress of the final move (dot x on the original, frame by frame).
+// Progress of the final move, per frame.
 const MOVE = [[192.683, 0], [192.7, 0.001], [192.717, 0.002], [192.733, 0.004], [192.75, 0.007], [192.767, 0.01],
   [192.783, 0.014], [192.8, 0.019], [192.817, 0.025], [192.833, 0.031], [192.85, 0.039], [192.867, 0.048],
   [192.883, 0.058], [192.9, 0.07], [192.917, 0.083], [192.933, 0.097], [192.95, 0.115], [192.967, 0.134],
@@ -24,7 +22,7 @@ const MOVE = [[192.683, 0], [192.7, 0.001], [192.717, 0.002], [192.733, 0.004], 
   [193.383, 0.941], [193.4, 0.952], [193.417, 0.961], [193.433, 0.968], [193.45, 0.975], [193.467, 0.981],
   [193.483, 0.986], [193.5, 0.99], [193.517, 0.993], [193.533, 0.996], [193.55, 0.998], [193.567, 0.9995], [193.583, 1]];
 
-// Sparkle riding up the right side of the outline (screen coords measured on the original), then drifting off.
+// Sparkle riding up the right side of the outline (screen coords), then drifting off.
 const SPARK = [[184.6, 1066, 556], [184.867, 1073, 535], [185.017, 1079, 519], [185.167, 1084, 503], [185.317, 1089, 488],
   [185.467, 1092, 473], [185.617, 1095, 458], [185.767, 1097, 444], [185.917, 1099, 429], [186.067, 1100, 416],
   [186.217, 1101, 402], [186.367, 1101, 390], [186.517, 1100, 379], [186.667, 1100, 369], [186.817, 1099, 358],
@@ -71,7 +69,7 @@ export default {
       return [dy / l, -dx / l];
     });
 
-    // Equation tokens: [text, style, ink-left x, reveal time]. x positions measured on the original.
+    // Equation tokens: [text, style, ink-left x, reveal time].
     const EQ_BASE = 408;
     const EQ = [['(', 'r', 411, 185.61], ['x', 'i', 426, 185.627], ['2', 's', 457, 185.66], ['+', 'r', 494, 185.693],
       ['y', 'i', 539, 185.723], ['2', 's', 570, 185.743], ['−', 'r', 607, 185.777], ['1', 'r', 660, 185.807],
@@ -102,7 +100,7 @@ export default {
         ctx.fillRect(0, 0, W, H);
         ctx.restore();
       }
-      // Static starfield (positions measured on the original).
+      // Static starfield.
       const sa = table([[188.4, 1], [189.0, 0.7], [189.6, 0.35], [190.1, 0]], t);
       if (sa > 0) {
         ctx.save();
@@ -135,11 +133,11 @@ export default {
 
     function outline(t, cx, cy, S) {
       const k = S / P0.S;
-      // The sparkling strands stay until 186.8 and are removed in two steps (186.817, 186.917) on the
-      // original; the wide bloom fades separately over the next 1.5 s (band levels measured around the outline).
+      // The sparkling strands stay until 186.8 and are removed in two steps (186.817, 186.917); the
+      // wide bloom fades separately over the next 1.5 s.
       const spread = table([[184.7, 1], [186.8, 1], [186.817, .7], [186.9, .55], [186.917, .35], [187.0, .2], [187.1, .05], [187.2, 0]], t);
       const bloom = table([[184.7, .54], [186.8, .57], [186.817, .55], [186.9, .5], [186.917, .45], [187.0, .4], [187.2, .33], [187.5, .27], [187.8, .22], [188.0, .17], [188.5, .1], [189.0, .05], [189.5, 0]], t);
-      // Grey rim around the thin outline (measured rim level over time): it fades out during the
+      // Grey rim around the thin outline: it fades out during the
       // final shrink, so the outline that hands over to the reprise at 193.6 has no rim.
       const halo = table([[187.5, 0], [187.7, .98], [188.0, .95], [188.5, .93], [189.0, .68], [190.0, .67], [191.2, .65], [191.6, .57], [192.0, .55], [192.95, .52], [193.05, .3], [193.15, .18], [193.25, .05], [193.3, 0]], t);
       const glow = table([[187.0, 1], [187.6, 0.75], [188.4, 0.5], [189.6, 0.12], [190.2, 0.08]], t);
@@ -150,7 +148,7 @@ export default {
       if (glow > 0) {
         const wide = table([[184.7, 1], [187.0, .8], [188.0, .7], [188.5, .5], [189.0, .2], [189.5, 0]], t);
         if(wide>0){
-          // Very wide, faint haze (+3..4 levels 20-60 px either side of the outline, measured).
+          // Very wide, faint haze (+3..4 levels 20-60 px either side of the outline).
           ctx.save();ctx.globalCompositeOperation='lighter';ctx.filter=`blur(${30*k}px)`;ctx.strokeStyle=`rgba(190,195,230,${.032*wide})`;ctx.lineWidth=60*k;traceHeart(ctx,cx,cy,S);ctx.stroke();ctx.restore();
         }
         if(bloom>0){
@@ -211,7 +209,7 @@ export default {
         ctx.globalAlpha = 1;
       }
       ctx.strokeStyle = 'rgb(250,250,255)';
-      // the shrunk outline is a little finer than a scaled copy (core level measured at 193.25-193.6)
+      // the shrunk outline is a little finer than a scaled copy
       ctx.lineWidth = (2.2 - .65 * spread) * k * (1 - .12 * table(MOVE, t));
       traceHeart(ctx, cx, cy, S);
       ctx.stroke();
@@ -219,7 +217,7 @@ export default {
     }
 
     function sparkle(t) {
-      // Glow amplitude and radial profile measured around the sparkle on the original
+      // Glow amplitude and radial profile around the sparkle
       // (excess ~240/195/108/58/37/23 at r 0/4/9/16/25/35 px while it rides the outline).
       const a = table([[184.6, .82], [186.5, .82], [187.0, 1], [187.6, 1], [188.0, .9], [188.65, .88], [188.7, .72], [188.8, .66], [188.95, .63], [189.0, .62], [189.1, .55], [189.15, .5], [189.2, .35], [189.25, .2], [189.3, .1], [189.35, .03], [189.4, 0]], t);
       if (a <= 0) return;
@@ -295,10 +293,10 @@ export default {
       ctx.restore();
     }
 
-    // word fade-in measured on the original: starts ~2 frames before it is legible, ~0.18 s, eased out
+    // word fade-in: starts ~2 frames before it is legible, ~0.18 s, eased out
     const fadeIn = (t, t0) => 1 - Math.pow(1 - clamp((t - t0 + 0.03) / 0.18), 1.8);
 
-    // Words are placed at the ink extents measured on the original: [text, inkLeft, inkRight, tIn, color, font].
+    // Words are placed at the original's ink extents: [text, inkLeft, inkRight, tIn, color, font].
     // The original italic is narrower than any free Garamond, so each word is compressed horizontally to fit.
     const fitCache = new Map();
     function fitWord(w, l, r, y, a, color = WHITE, font = ITAL) {
@@ -341,7 +339,7 @@ export default {
 
     function rightText(t) {
       ctx.textBaseline = 'alphabetic';
-      // Fade-outs measured frame by frame on the original.
+      // Fade-outs per frame.
       const outA = table([[188.383, 1], [188.4, .795], [188.417, .563], [188.433, .338], [188.45, .119], [188.467, 0]], t);
       if (outA > 0) for (const [w, l, r, y, t0, col, font] of RIGHT_A) fitWord(w, l, r, y, fadeIn(t, t0) * outA, col, font);
       const outB = table([[190.2, 1], [190.217, .99], [190.233, .96], [190.25, .9], [190.267, .85], [190.283, .79], [190.3, .77], [190.317, .7], [190.333, .65],

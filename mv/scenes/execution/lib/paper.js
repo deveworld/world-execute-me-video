@@ -1,5 +1,4 @@
 // Procedural stationery and a soft desk-lamp falloff for the two mainframe shots.
-// All pixels are generated here; no reference still is used as an asset.
 const W = 1920, H = 1080;
 
 export function litPaper(env, kind) {

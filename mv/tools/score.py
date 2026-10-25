@@ -1,11 +1,11 @@
-"""Score a clip of our render against the original, and against the V3 render.
+"""Score a clip of our render against the original and against the full render in out/v3.
 
   node tools/render.mjs --from 61 --to 62.93 --only simulation/ --workers 2 --no-audio --out out/clip.mp4
   python3 -P -E tools/score.py out/clip.mp4 --from 61 [--region x0,y0,x1,y1] [--per-frame]
 
 Clip frame i is song frame round(from*60)+i (that is how render.mjs numbers frames). Metrics are on
 480x270 (region scaled accordingly): RGB mean abs error and symmetric Canny-edge chamfer distance
-(px at 480 wide). "base" is the same frames of out/v3/world-execute-remake-v3.mp4 (the V3 render),
+(px at 480 wide). "base" is the same frames of out/v3/world-execute-remake-v3.mp4,
 so the delta column shows whether your change moved the frame towards the original (negative = better).
 """
 import argparse, subprocess

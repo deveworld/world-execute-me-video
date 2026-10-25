@@ -13,10 +13,10 @@ const COLS = 73, ROWS = 23, N = COLS * ROWS;
 const SPH = { x: 959.5, y: 469.5, r: 352 };
 const BALL = { x: 959.5, y: 643, rx: 280, ry: 237 };
 const CUBE = { x: 959.5, y: 649.5, h: 150, F: 1500 };
-const POSE1 = { yaw: 0.72, pitch: -0.4 };                 // fitted on the full lattice at several frames
+const POSE1 = { yaw: 0.72, pitch: -0.4 };
 const POSE2 = { yaw: Math.PI / 4, pitch: -Math.atan(1 / Math.SQRT2), roll: -Math.PI / 6 }; // corner-on
 
-// grid → sphere progress, read off the source (x-extent of the field, 29.05 → 29.72)
+// grid → sphere progress (x-extent of the field, 29.05 → 29.72)
 const P1 = [[29.03, 0], [29.083, 0.035], [29.117, 0.078], [29.15, 0.134], [29.183, 0.204], [29.217, 0.29],
   [29.25, 0.385], [29.283, 0.494], [29.317, 0.606], [29.35, 0.70], [29.383, 0.767], [29.417, 0.83],
   [29.45, 0.874], [29.483, 0.908], [29.517, 0.936], [29.55, 0.958], [29.583, 0.972], [29.617, 0.986],
@@ -48,7 +48,7 @@ export function createPoints({ root, env }) {
   const rnd = env.rng(20240629);
   // ---------- dots ----------
   // 1679 grid dots → 1000 targets: 679 dots pair up with their right-hand neighbour and merge
-  // into it on the way to the sphere (the source shows ".." pairs closing up around 29.4 s).
+  // into it on the way to the sphere (the pairs close up around 29.4 s).
   const NT = 1000;
   const G = new Float32Array(N * 2), grp = new Int32Array(N), dup = new Uint8Array(N);
   const S = new Float32Array(NT * 2), Sz = new Float32Array(NT), B = new Float32Array(NT * 2);
@@ -87,8 +87,8 @@ export function createPoints({ root, env }) {
     Bd[g] = rnd();
     g++;
   }
-  // Preserve the grid's local ordering while replacing the guessed shell with reusable
-  // vector anchors. Nearest available pairs are assigned globally, once during creation.
+  // Map the dots onto SPHERE_POINTS, keeping the grid's local ordering: nearest available pairs are
+  // assigned globally, once in create().
   const pairsByDistance = new Float64Array(NT * NT);
   for (let i = 0; i < NT; i++) for (let j = 0; j < NT; j++) {
     const dx = S[i * 2] - SPHERE_POINTS[j][0], dy = S[i * 2 + 1] - SPHERE_POINTS[j][1];
@@ -127,7 +127,7 @@ export function createPoints({ root, env }) {
   const turn1 = (t) => ease.outCubic(prog(t, 32.06, 0.845));      // first turn
   const turn2 = (t) => ease.inOutSine(prog(t, 32.976, 0.46));     // to corner-on view
   const lineLen = (t) => ease.outQuart(prog(t, 30.668, 0.45));
-  // the segment starts tilted ~0.21 rad and levels out over 0.5 s (measured 30.68–31.0)
+  // the segment starts tilted ~0.21 rad and levels out over 0.5 s
   const lineAng = (t) => 0.21 * Math.pow(1 - prog(t, 30.68, 0.5), 2.5);
 
   function cubeProj(t) {
@@ -194,8 +194,8 @@ export function createPoints({ root, env }) {
       const k2 = ease.inOutSine(prog(t, departure[k], 0.6));
       let r = rad;
       if (k2 > 0) {
-        // in the ball the dots read as a 3-D volume: crisp, bright, near ones larger (measured:
-        // peak brightness rises from ~135 to ~200 over the background while total ink stays put)
+        // in the ball the dots read as a 3-D volume: crisp, bright, near ones larger (peak
+        // brightness rises from ~135 to ~200 over the background while total ink stays put)
         const w = Bd[k];
         x = lerp(x, B[k * 2], k2); y = lerp(y, B[k * 2 + 1], k2);
         alpha = lerp(alpha, 0.8 + 0.2 * w, k2);
@@ -260,7 +260,7 @@ export function createPoints({ root, env }) {
         let px = sx, py = sy;
         let rr = cubeOn ? (1.1 + 0.4 * near) * (1 + 0.3 * k2 * k2 * k2) : 1.25;   // corner-on sites read larger
         if (t > 33.44) {
-          // Measured: the lattice sites stay put; each dot leaves at its own time (33.445–33.58),
+          // The lattice sites stay put; each dot leaves at its own time (33.445–33.58),
           // drops to a faint speck and darts radially out to the hexagon outline, where it lingers
           // briefly and fades: the interior empties from the middle (clear by ~33.6) while the
           // rim stays speckled until ~33.68.
@@ -321,7 +321,7 @@ export function createPoints({ root, env }) {
   function drawReadout(ctx, t) {
     if (t < 30.25 || t > 33.15) return;
     const a = prog(t, 30.28, 0.12) * (1 - prog(t, 32.97, 0.14));
-    const steps = [[30.676, 1], [31.592, 2], [32.058, 3]];   // roll starts (measured)
+    const steps = [[30.676, 1], [31.592, 2], [32.058, 3]];   // roll starts
     let cur = 0, next = 0, k = 1;
     for (const [ts, d] of steps) {
       if (t >= ts) { cur = d; next = d; }

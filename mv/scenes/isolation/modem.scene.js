@@ -11,7 +11,7 @@ const SPB = 60 / 130;
 const FONT = '"Share Tech Mono"';
 const frameTime = (t) => Math.round(t * 60) / 60;
 
-// Geometry measured on the original frames.
+// Layout (px).
 const PANEL = { x: 280, y: 130, w: 1360, h: 820, r: 22 };
 const PLOT = { x0: 380, y0: 250, x1: 1607, y1: 601 };
 const fy = (f) => 602 - 0.088 * f; // Hz -> y
@@ -157,7 +157,7 @@ function drawContent(ctx, rng) {
   };
 
   // Dial/ringback tones have broad dim skirts and a thicker, grey core.
-  // A hard time-window cuts their ends rather than adding rounded horizontal glow.
+  // A hard time window cuts their ends square.
   for (const [x0, x1, fs] of [[380, 467, [350, 440]], [493, 547, [350, 440]], [860, 932, [440, 480]]]) {
     ctx.save();
     ctx.beginPath();
@@ -176,8 +176,8 @@ function drawContent(ctx, rng) {
   }
 
   // DTMF FFT bins: flat cut-off at each end, thick lobes and a narrow dark neck.
-  // The shared analytic field is fitted to native tone widths; its fine variation
-  // is deterministic and does not consume the later handshake texture's RNG.
+  // The shared analytic field matches the native tone widths; its fine variation
+  // doesn't draw from the handshake texture's RNG.
   for (const [, x, lo, hi] of DIGITS) {
     if (!lo) continue;
     for (const f of [lo, hi]) {
@@ -295,7 +295,7 @@ function drawContent(ctx, rng) {
     ctx.fill();
     ctx.filter = 'none';
   }
-  // (the two bow-tie connectors at x 1400-1421 are measured contours, see TRAINING_CONTOURS)
+  // (the two bow-tie connectors at x 1400-1421 come from TRAINING_CONTOURS)
 
   // V.34 line probing: tones every 150 Hz, 900/1200/1800/2400 omitted
   const probe = (x0, x1, col, strength) => {
@@ -326,12 +326,10 @@ function drawContent(ctx, rng) {
   ctx.filter = 'none';
   puffs(1471, 1505, 496, mix(lav, 0.95), 1);
 
-  // (training blocks: drawn from measured contours below, after the handshake lobes)
+  // (training blocks: drawn from contours below, after the handshake lobes)
 
-  // The handshake is a spectral density field, with uneven lobes and ridges.
-  // Replace the regular capsule approximation with its measured vector contours.
-  // Training blocks: a lavender comb of horizontal lines then pink noise. Their measured contours
-  // replace the earlier procedural sine-ridge texture, which read as a regular herringbone.
+  // The handshake is a spectral density field with uneven lobes and ridges, drawn from vector contours.
+  // Training blocks: a lavender comb of horizontal lines then pink noise, also drawn from contours.
   for(const [box,layers] of [...HANDSHAKE_CONTOURS, ...TRAINING_CONTOURS]){
     ctx.clearRect(...box);
     for(const [color,alpha,d] of layers){
@@ -375,7 +373,7 @@ export default {
           ctx.drawImage(content, 0, 0);
           ctx.restore();
           // freshly written ink is brighter; once the playhead has reached the end (110.2) this glow
-          // decays linearly over 0.27 s (measured on the last 28 px of the training block)
+          // decays linearly over 0.27 s
           const inkA = t >= 110.2 ? clamp(1 - (t - 110.2) / 0.27) : 1;
           const w = 28;
           sctx.clearRect(0, 0, 64, 400);
@@ -395,8 +393,8 @@ export default {
         const headA = done ? clamp(1 - (t - 110.2) / 0.15) : 1;
         if (headA > 0) {
           const sb = (t - T0) / SPB;
-          // start flash, then a beat pulse measured on the original: rises over ~2 frames, decays in ~0.15 s,
-          // brightens the few px right of the head rather than widening the glow
+          // start flash, then a beat pulse: rises over ~2 frames, decays in ~0.15 s and
+          // brightens the few px right of the head while the glow keeps its width
           const db = ((((t - T0 + 0.017) / SPB) % 1) + 1) % 1 * SPB;   // original's pulse leads the grid by ~1 frame
           const pulse = 0.5 * clamp(db / 0.033) * Math.exp(-db / 0.15);
           const start = Math.exp(-(t - T0) / 0.22);
@@ -505,7 +503,7 @@ export default {
           }
           cursor = { x: 380.5 + 27.3 * n, y: L.y };
         }
-        // caret blink phase measured on the original's toggles (frames 6299, 6368, 6382, ..., 6645): 0.4 frame before T0
+        // caret blink phase: 0.4 frame before T0
         const blinkOn = ((((t - 103.5925) / SPB) % 1) + 1) % 1 < 0.5;
         if (cursor && (t - lastKey < 0.2 || blinkOn)) {
           ctx.fillStyle = C.lav;

@@ -1,7 +1,7 @@
 // Seek-bar preview thumbnails, rendered from the copied scene code with ../mv/tools/render.mjs
 // (4 per second, drawn at 960×540 and reduced to 320×180), packed into 10×10 JPEG sprite sheets.
 // Skipped when dist/scenes, dist/engine and dist/assets are unchanged since the last run; --check only reports
-// whether the committed sheets still match them (the Pages build cannot render).
+// whether the committed sheets still match them (the Pages workflow doesn't render).
 //   node thumbs.mjs [--force | --check]
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';

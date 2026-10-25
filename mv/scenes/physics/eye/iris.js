@@ -1,4 +1,4 @@
-// Code vector iris fields with a radial pupil morph; no raster assets.
+// Vector iris fields with a radial pupil morph.
 import { IRIS_FIELDS } from './field.js';
 export const IRIS_R=246;
 export const IRIS_CANVAS={S:500,C:250};
@@ -7,7 +7,7 @@ function fieldCanvas(data){
  const cv=document.createElement('canvas');cv.width=cv.height=500;const c=cv.getContext('2d');
  c.fillStyle='rgb(8,7,14)';c.beginPath();c.arc(250,250,246,0,Math.PI*2);c.fill();
  c.lineJoin='round';c.lineWidth=.40;
- // Built as one SVG path string: Path2D.closePath() is quadratic in Chrome (3 s for these ~100k subpaths), the parsed path is pixel-identical.
+ // Built as one SVG path string: Path2D.closePath() is quadratic in Chrome (3 s for these ~100k subpaths).
  for(const [color,paths] of data){let d='';for(const pts of paths){d+=`M${pts[0]+.5} ${pts[1]+.5}`;for(let i=2;i<pts.length;i+=2)d+=`L${pts[i]+.5} ${pts[i+1]+.5}`;d+='Z';}const p=new Path2D(d);c.fillStyle=c.strokeStyle=`rgb(${color.join(',')})`;c.fill(p,'evenodd');c.stroke(p);}
  return cv;
 }

@@ -34,7 +34,7 @@ export function thinRing(ctx, alpha, P = CIRC) {
   ctx.restore();
 }
 
-// 12 short inner ticks (every 30°) up to angle `upTo` (faint: ≈ 0.6× the old ink, measured).
+// 12 short inner ticks (every 30°) up to angle `upTo` (faint).
 export function ticks(ctx, upTo, alpha, P = CIRC) {
   if (alpha <= 0) return;
   ctx.save();

@@ -1,6 +1,6 @@
 // 81.55-85.11  "If I'm a tabby cat / Then I will purr for your / Enjoyment"
 // Beige paper; a cat drawn as one continuous line and a handwritten lyric written on stroke by stroke.
-// The line and the lyric are polylines vectorised from the reference (out/existence/trace.py) and drawn
+// The line and the lyric are polylines vectorised from the reference and drawn
 // with a pen dot; face, tabby marks and underline are procedural. Canvas 2D.
 import { clamp, lerp, prog, ease } from './lib.js';
 import { TracedStrokes, loadStrokes } from './strokes.js';
@@ -156,8 +156,8 @@ export default {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         poseTail(t);
         line.draw(ctx, t);
-        // The finished lettering is revealed through a wide mask of the traced pen path, so the ink never
-        // changes shape when a row completes (the old stroke -> outline swap popped at 82.80 and 84.37).
+        // The finished lettering is revealed through a wide mask of the traced pen path, so the ink keeps
+        // its shape when a row completes.
         textRows.forEach(([x,y,X,Y,done],i)=>{
           if(t>=done){ctx.save();ctx.beginPath();ctx.rect(x,y,X-x,Y-y);ctx.clip();ctx.fillStyle=TEXT_INK;ctx.translate(.5,.5);ctx.fill(lettering[i],'evenodd');ctx.restore();return;}
           tctx.clearRect(x,y,X-x,Y-y);tctx.save();tctx.beginPath();tctx.rect(x,y,X-x,Y-y);tctx.clip();

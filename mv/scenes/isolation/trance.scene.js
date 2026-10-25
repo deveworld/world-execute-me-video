@@ -1,54 +1,12 @@
 // "So we can enter / The trance, / the trance" — a hypnosis pendulum swinging on the beat above a rosette of
-// precessing orbits (r = p / (1 - e cos(5/3 (phi - phi0))), all with the same periapsis), drawn by comets and
-// growing denser until a dark "black hole" with concentric rings sits in the middle. Ends with a fade to dark
-// and the first typed "If" of the next shot.
+// precessing orbits (lib/rosette-motion.js): one comet's trail, copied by mirror and rotation as the shot goes on,
+// grows denser until a dark "black hole" with concentric rings sits in the middle. Ends with a fade to dark and
+// the first typed "If" of the next shot.
 import { clamp, lerp, smoothstep } from '../../engine/lib/anim.js';
 import { createRosette } from './lib/rosette-motion.js';
 
-const SPB = 60 / 130;
 const CX = 1219.5, CY = 629.5;
-const QP = 86;            // periapsis distance shared by every orbit (edge of the dark hole)
-const K = 5 / 3;          // radial frequency: apoapsis advances 216 deg per pass -> 5 petals in 3 turns
-const LAYER = { x: 840, y: 248, s: 760 };
 const D2R = Math.PI / 180;
-
-const radius = (phi, Q, phi0, q = QP, k = K) => {
-  const e = (Q - q) / (Q + q);
-  const p = q * (1 + e);
-  return p / (1 - e * Math.cos(k * (phi - phi0)));
-};
-
-// Static orbit families: [appear time, phi0 (deg), mirrored, apoapsis list]
-const FAMILIES = [ // [appear time, phi0 (deg), mirrored, apoapsis list, line strength]
-  [-1, 12, false, [240, 268, 296, 326], 1],
-  [99.885, 12, true, [228, 256, 284, 314], 0.92],
-  [100.82, 48, false, [232, 262, 296], 0.62],
-  [100.82, 48, true, [246, 284], 0.62],
-  [100.82, 0, true, [256, 310], 0.62],
-  [101.75, 30, false, [236, 290], 0.5],
-  [101.75, 30, true, [262, 304], 0.5],
-  [101.75, 66, false, [226, 280], 0.5],
-  [101.75, 66, true, [250, 312], 0.5],
-  [101.75, 84, false, [244, 276], 0.5],
-  [101.75, 84, true, [232, 298], 0.5],
-];
-
-// Comets: [line start, head end, phi0, mirrored, Q, anchor time, phi at anchor (deg, orbit's own frame)]
-const COMETS = [
-  [99.22, 99.95, 12, false, 214, 99.55, 135],
-  [99.885, 100.86, 12, false, 222, 99.917, 350],
-  [99.885, 100.86, 12, true, 222, 99.917, 350],
-  [100.80, 101.8, 0, false, 270, 100.85, 15],
-  [100.80, 101.8, 0, true, 270, 100.85, 15],
-  [100.80, 101.8, 0, false, 290, 100.85, -20],
-  [100.80, 101.8, 0, true, 290, 100.85, -20],
-  [101.75, 103.6, 30, false, 262, 101.8, 200],
-  [101.75, 103.6, 30, true, 262, 101.8, 200],
-  [101.75, 103.6, 66, false, 280, 101.8, 20],
-  [101.75, 103.6, 66, true, 280, 101.8, 20],
-  [101.75, 103.6, 84, false, 228, 101.8, 290],
-  [101.75, 103.6, 84, true, 228, 101.8, 290],
-];
 
 const RINGS = [[100.35, [31.5, 63.5]], [101.47, [15.5, 47.5]], [102.4, [7.5, 23.5, 39.5, 55.5, 71.5]]];
 
@@ -75,21 +33,8 @@ const tableAt = (tab, x) => {
 const IF_RISE = [8, 3, 1, 1, 0];
 const IF_ALPHA = [.55, .81, .95, .97, 1];
 
-const LINE = 'rgba(186,188,216,0.56)';
 const hex = (c) => `rgb(${c.map((v) => Math.round(v)).join(',')})`;
 const mixc = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
-
-function orbitPath(ctx, Q, phi0, mirror, ox, oy, q = QP, k = K) {
-  ctx.beginPath();
-  for (let a = 0; a <= 1080.01; a += 1.5) {
-    const phi = a * D2R;
-    const r = radius(phi, Q, phi0 * D2R, q, k);
-    const x = (mirror ? -1 : 1) * r * Math.cos(phi);
-    const y = r * Math.sin(phi);
-    if (a === 0) ctx.moveTo(ox + x, oy - y);
-    else ctx.lineTo(ox + x, oy - y);
-  }
-}
 
 export default {
   id: 'isolation/trance',
@@ -100,7 +45,7 @@ export default {
     await env.loadFont('IM Fell English', '/scenes/isolation/fonts/IMFeENit28P.ttf', { style: 'italic' });
     const { ctx } = env.canvas(root);
 
-    const rosette=createRosette();
+    const rosette = createRosette();
 
     // Lyrics as DOM lines with a moving soft mask.
     const lyricEls = LYRICS.map((L) => {
@@ -210,17 +155,16 @@ export default {
         ctx.restore();
 
         // Final fade (frames 6194-6210): the whole frame dims towards a dark violet while
-        // keeping the background gradient. The rosette templates already contain this dimming, so they
-        // are composited after the fade.
+        // keeping the background gradient. The rosette dims itself, so it is composited after the fade.
         const fade = smoothstep(clamp((t * 60 - 6194) / 16));
         if (fade > 0) {
           ctx.fillStyle = `rgba(8,8,16,${0.64 * fade})`;
           ctx.fillRect(0, 0, 1920, 1080);
         }
-        rosette.floor(ctx,t);
-        rosette.lines(ctx,t);
-        rosette.heads(ctx,t);
-        ctx.globalCompositeOperation='source-over';
+        rosette.floor(ctx, t);
+        rosette.lines(ctx, t);
+        rosette.heads(ctx, t);
+        ctx.globalCompositeOperation = 'source-over';
 
         const textA = tableAt(LYRIC_FADE, t * 60);
         LYRICS.forEach((L, i) => {

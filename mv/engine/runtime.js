@@ -3,6 +3,7 @@
 // recorded in __stage.errors and drawn over that scene.
 import * as beat from './beat.js';
 import * as anim from './lib/anim.js';
+import { setCanvasScale } from './hidpi.js';
 
 const W = 1920, H = 1080;
 const stage = document.getElementById('stage');
@@ -10,7 +11,11 @@ const stage = document.getElementById('stage');
 // stage also works under a path prefix such as a GitHub Pages project site.
 const ROOT = new URL('../', import.meta.url);
 const fromRoot = (url) => typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? new URL(url.slice(1), ROOT).href : url;
-const only = new URLSearchParams(location.search).get('only') ?? '';
+const params = new URLSearchParams(location.search);
+const only = params.get('only') ?? '';
+// ?scale=2 draws canvases at 2 device pixels per stage pixel (see hidpi.js); open the stage at that devicePixelRatio.
+const scale = Number(params.get('scale') ?? 1);
+if (scale !== 1) setCanvasScale(scale);
 const errors = [];
 let scenes = [];
 
@@ -65,19 +70,20 @@ function showError(s, t, err) {
 
 async function loadIndex() {
   const paths = await (await fetch(new URL(`__scenes.json?only=${encodeURIComponent(only)}`, ROOT))).json();
-  const loaded = [];
-  for (const path of paths) {
+  // All scene modules load at once; index order is kept for the sort below.
+  const loaded = await Promise.all(paths.map(async (path) => {
     try {
       const def = (await import(fromRoot(path))).default;
       if (!def || typeof def.create !== 'function' || !(def.end > def.start)) {
         throw new Error('default export must be { id, start, end, create(root, env) }');
       }
-      loaded.push({ path, def });
+      return { path, def };
     } catch (err) {
       record(path, null, err);
+      return null;
     }
-  }
-  scenes = loaded.sort((a, b) => (a.def.z ?? 0) - (b.def.z ?? 0) || a.def.start - b.def.start);
+  }));
+  scenes = loaded.filter(Boolean).sort((a, b) => (a.def.z ?? 0) - (b.def.z ?? 0) || a.def.start - b.def.start);
 }
 
 async function mount(s, t) {

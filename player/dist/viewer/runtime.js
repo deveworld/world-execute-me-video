@@ -7,8 +7,12 @@
 // Creates run one at a time. WebGL contexts are counted per scene so the cache stays under Chrome's context limit.
 import * as beat from '../engine/beat.js';
 import * as anim from '../engine/lib/anim.js';
+import { install, setCanvasScale, canvasScale, backingBytes } from '../engine/hidpi.js';
 
 const W = 1920, H = 1080, MAX_WEBGL = 12;
+// Canvas memory kept by hidden scenes. Above it the scenes farthest from the playhead are dropped and
+// prewarm stops; at stage scale 2 every canvas takes four times the memory.
+const MAX_CANVAS_BYTES = 2.5e9;
 const stage = document.getElementById('stage');
 // "/scenes/..." style URLs (scene index, env loaders) resolve against the project root, so the
 // stage also works under a path prefix such as a GitHub Pages project site.
@@ -16,12 +20,20 @@ const ROOT = new URL('../', import.meta.url);
 const fromRoot = (url) => typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? new URL(url.slice(1), ROOT).href : url;
 const only = new URLSearchParams(location.search).get('only') ?? '';
 const errors = [];
-let scenes = [], queue = Promise.resolve(), creating = null, useClock = 0;
+let scenes = [], queue = Promise.resolve(), creating = null, useClock = 0, prewarming = Promise.resolve();
+
+// Canvases follow the stage scale set by setScale() (hidpi.js). Installed before any scene module loads,
+// so canvases made at import time are tracked too (they keep k = 1).
+install();
 
 const getContext = HTMLCanvasElement.prototype.getContext;
 HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
   const ctx = getContext.call(this, type, ...rest);
-  if (creating && ctx && /^webgl/.test(type) && !this.__counted) { this.__counted = true; creating.webgl++; }
+  if (creating && ctx && !this.__counted) {
+    this.__counted = true;
+    if (/^webgl/.test(type)) creating.webgl++;
+    creating.canvases.push(this);
+  }
   return ctx;
 };
 
@@ -75,19 +87,20 @@ function showError(s, t, err, quiet = false) {
 
 async function loadIndex() {
   const paths = await (await fetch(new URL(`__scenes.json?only=${encodeURIComponent(only)}`, ROOT))).json();
-  const loaded = [];
-  for (const path of paths) {
+  // All scene modules load at once; index order is kept for the sort below.
+  const loaded = await Promise.all(paths.map(async (path) => {
     try {
       const def = (await import(fromRoot(path))).default;
       if (!def || typeof def.create !== 'function' || !(def.end > def.start)) {
         throw new Error('default export must be { id, start, end, create(root, env) }');
       }
-      loaded.push({ path, def, root: null, inst: null, mounting: null, shown: false, failed: false, deferred: null, webgl: 0, lastUsed: 0, createMs: 0 });
+      return { path, def, root: null, inst: null, mounting: null, shown: false, failed: false, deferred: null, webgl: 0, canvases: [], lastUsed: 0, createMs: 0 };
     } catch (err) {
       record(path, null, err);
+      return null;
     }
-  }
-  scenes = loaded.sort((a, b) => (a.def.z ?? 0) - (b.def.z ?? 0) || a.def.start - b.def.start);
+  }));
+  scenes = loaded.filter(Boolean).sort((a, b) => (a.def.z ?? 0) - (b.def.z ?? 0) || a.def.start - b.def.start);
 }
 
 const activeAt = (s, t) => t >= s.def.start && t < s.def.end;
@@ -123,7 +136,7 @@ function mount(s, t, quiet = false) {
 function unmount(s) {
   try { s.inst?.destroy?.(); } catch (err) { record(s.def.id, null, err); }
   s.root?.remove();
-  Object.assign(s, { root: null, inst: null, mounting: null, shown: false, failed: false, deferred: null, webgl: 0 });
+  Object.assign(s, { root: null, inst: null, mounting: null, shown: false, failed: false, deferred: null, webgl: 0, canvases: [] });
 }
 
 function hide(s) {
@@ -133,13 +146,32 @@ function hide(s) {
   s.shown = false;
 }
 
+const sceneBytes = (s) => s.canvases.reduce((n, c) => n + backingBytes(c), 0);
+const aliveBytes = () => scenes.reduce((n, s) => n + (s.root ? sceneBytes(s) : 0), 0);
+let playhead = 0;
+const distance = (s) => playhead < s.def.start ? s.def.start - playhead : playhead >= s.def.end ? playhead - s.def.end + 1e-3 : 0;
+const evictable = () => scenes.filter((s) => s.root && !s.shown && s.mounting && s !== creating);
+
 function evict() {
   let webgl = scenes.reduce((n, s) => n + (s.root ? s.webgl : 0), 0);
-  for (const s of [...scenes].filter((s) => s.root && !s.shown && s.webgl && s.mounting).sort((a, b) => a.lastUsed - b.lastUsed)) {
+  for (const s of evictable().filter((s) => s.webgl).sort((a, b) => a.lastUsed - b.lastUsed)) {
     if (webgl <= MAX_WEBGL) break;
     webgl -= s.webgl;
     unmount(s);
   }
+  let bytes = aliveBytes();
+  for (const s of evictable().sort((a, b) => distance(b) - distance(a))) {
+    if (bytes <= MAX_CANVAS_BYTES) break;
+    bytes -= sceneBytes(s);
+    unmount(s);
+  }
+}
+// Over 85% of the budget, prewarm only creates a scene nearer the playhead than the farthest one kept,
+// so evict() never drops what prewarm just made.
+function roomFor(s) {
+  if (aliveBytes() <= MAX_CANVAS_BYTES * 0.85) return true;
+  const far = evictable().sort((a, b) => distance(b) - distance(a))[0];
+  return !!far && distance(far) > distance(s);
 }
 
 const ready = loadIndex();
@@ -149,6 +181,7 @@ window.__stage = {
   errors,
   async renderFrame(t) {
     await ready;
+    playhead = t;
     const active = scenes.filter((s) => activeAt(s, t));
     for (const s of active) await mount(s, t);
     for (const s of scenes) if (s.shown && !activeAt(s, t)) hide(s);
@@ -167,19 +200,37 @@ window.__stage = {
     evict();
   },
   // Create (and draw once, hidden) every scene active at t that is not alive yet. Returns how many were created.
-  async prewarm(t) {
-    await ready;
-    let created = 0;
-    for (const s of scenes.filter((s) => activeAt(s, t) && !s.root)) {
-      await mount(s, t, true);
-      created++;
-      if (!s.root || s.shown) continue;
-      if (!s.failed) { try { s.inst.render(t); } catch (err) { showError(s, t, err, true); } }
-      if (!s.shown) hide(s);
-      s.lastUsed = ++useClock;
-    }
-    evict();
-    return created;
+  prewarm(t) {
+    const run = prewarming.then(() => prewarmAt(t));
+    prewarming = run.catch(() => {});
+    return run;
   },
-  list: () => scenes.map((s) => ({ id: s.def.id, path: s.path, start: s.def.start, end: s.def.end, z: s.def.z ?? 0, alive: !!s.root, shown: s.shown, webgl: s.webgl, createMs: Math.round(s.createMs) })),
+  // Draw canvases at k device pixels per stage pixel. Every scene is dropped and made again at the new
+  // scale (the visible ones on the next renderFrame, the rest by prewarm). Call it between renderFrame calls.
+  async setScale(k) {
+    if (k === canvasScale()) return false;
+    await prewarming;
+    await queue;
+    setCanvasScale(k);
+    for (const s of scenes) if (s.root) unmount(s);
+    return true;
+  },
+  scale: () => canvasScale(),
+  list: () => scenes.map((s) => ({ id: s.def.id, path: s.path, start: s.def.start, end: s.def.end, z: s.def.z ?? 0, alive: !!s.root, shown: s.shown, webgl: s.webgl, bytes: s.root ? sceneBytes(s) : 0, createMs: Math.round(s.createMs) })),
 };
+
+async function prewarmAt(t) {
+  await ready;
+  let created = 0;
+  for (const s of scenes.filter((s) => activeAt(s, t) && !s.root)) {
+    if (!roomFor(s)) break;
+    await mount(s, t, true);
+    created++;
+    if (!s.root || s.shown) continue;
+    if (!s.failed) { try { s.inst.render(t); } catch (err) { showError(s, t, err, true); } }
+    if (!s.shown) hide(s);
+    s.lastUsed = ++useClock;
+  }
+  evict();
+  return created;
+}

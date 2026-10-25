@@ -1,10 +1,9 @@
 // 47.725–51.425 "And then blind my vision / So dizzy, so dizzy": eye chart + drawn eye.
-// Canvas 2D, vector iris intensity contours with a WebGL radial pupil morph,
-// polyline lids and lash strands. From 49.58 the "dizzy" look:
+// Canvas 2D: a procedural iris texture with a WebGL radial pupil morph, polyline lids and
+// clumped lash curves. From 49.58 the "dizzy" look:
 // a peach and a blue copy (additive) drifting apart and back, pupils drawn on top as a union.
-import { LASHES } from './eye/lashes.js';
-import { CLOSED_LID } from './eye/closed-lid.js';
-import { makeIrisModel, renderOuter, drawInner, drawPupil, PALETTES, IRIS_R, IRIS_CANVAS } from './eye/iris.js';
+import { makeLashes, drawLashes } from './eye/lid.js';
+import { makeIrisModel, drawInner, drawPupil, PALETTES } from './eye/iris.js';
 import {
   CORNER_L, CORNER_R, UPPER_OPEN, LOWER_OPEN, CLOSED_A, CLOSED_B, CREASE_OPEN, CREASE_CLOSED_A, CREASE_CLOSED_B,
   sampleAtX, catmull,
@@ -20,7 +19,6 @@ const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 const lerp = (a, b, k) => a + (b - a) * k;
 const sstep = (k) => { k = clamp(k); return k * k * (3 - 2 * k); };
 const outCubic = (k) => 1 - Math.pow(1 - clamp(k), 3);
-const inQuad = (k) => clamp(k) ** 2;
 const ramp = (t, t0, t1, ease = sstep) => ease((t - t0) / (t1 - t0));
 
 // keyframe track with smooth (sine) interpolation
@@ -95,8 +93,6 @@ const whiteness = (t) => (t >= DIZZY_T0 ? 0 : ramp(t, 48.64, 48.90));
 const upperDizzy=linTrack([[49.95, 0], [49.983, 1], [50.0, 3], [50.033, 8], [50.067, 12], [50.083, 18], [50.117, 26], [50.15, 32], [50.183, 38], [50.217, 42], [50.25, 46], [50.283, 48], [50.317, 49], [50.35, 49], [50.4, 47], [50.45, 46], [50.683, 46], [50.7, 49], [50.917, 49], [50.95, 51], [50.983, 54], [51.017, 57], [51.05, 61], [51.083, 65], [51.117, 68], [51.15, 72], [51.183, 76], [51.217, 78], [51.25, 79], [51.45, 79]]);
 const squint = (t) => (t >= DIZZY_T0 ? upperDizzy(t)/36 : ramp(t, 48.25, 49.0));
 const glow = (t) => ramp(t, 48.2, 48.34, outCubic);
-// closed lid at 47.733 vs 49.4: vertical offset per column
-const OPEN_SHOT_SHIFT = (x) => { const k = [[720, 1], [800, 5], [880, 8], [960, 10], [1040, 11], [1120, 12], [1200, 13], [1280, 12], [1360, 11], [1440, 9], [1520, 7], [1600, 4], [1680, 2], [1760, 0]]; if (x <= k[0][0]) return k[0][1]; for (let i = 1; i < k.length; i++) if (x <= k[i][0]) return k[i - 1][1] + (k[i][1] - k[i - 1][1]) * (x - k[i - 1][0]) / (k[i][0] - k[i - 1][0]); return 0; };
 // Dizzy iris: per-channel levels (less violet, greener mid-tones), and the
 // exposure ramp of the reopening eye (49.583-49.7).
 const irisExposure = linTrack([[49.583, 0.6], [49.6, 0.68], [49.617, 0.77], [49.633, 0.82], [49.65, 0.87], [49.667, 0.92], [49.683, 0.97], [49.7, 1]]);
@@ -109,24 +105,15 @@ function dizzyIris(t) {
   return { gain: DIZZY_GAIN.map((g) => g * k), offset: DIZZY_OFFSET.map((o) => o * k) };
 }
 
-// ---- lashes ----
-function makeLashes(rng) {
-  const up = [];
-  for (let i = 0; i < 190; i++) {
-    const u = 0.055 + 0.92 * Math.pow(rng(), 0.95);
-    const mid = Math.sin(Math.PI * u);
-    up.push({
-      u, len: (16 + 70 * Math.pow(mid, 0.9)) * (0.55 + 0.45 * rng()),
-      lean: (u - 0.5) * 1.5 + (rng() - 0.5) * 0.35, bend: (0.15 + rng() * 0.25) * Math.sign(u - 0.5 || 1),
-      a: 0.3 + 0.45 * rng(), w: 0.7 + rng() * 0.5,
-    });
-  }
-  const lo = [];
-  for (let i = 0; i < 46; i++) {
-    const u = 0.12 + 0.8 * rng();
-    lo.push({ u, len: 6 + 14 * rng() * Math.sin(Math.PI * u), lean: (u - 0.5) * 1.2 + (rng() - 0.5) * 0.4, a: 0.25 + 0.3 * rng() });
-  }
-  return { up, lo };
+// lash pose for openness o: up while open, hanging while closed. On the blink the lashes shrink away
+// as the lid starts to fall (gone at 49.217) and then hang; on reopening they are already up.
+function lashPose(t, o) {
+  if (t >= 49.15 && t < 49.217) return { dir: -1, shape: 'open', len: closeLashLen(t) };
+  if (t >= 49.217 && t < 49.225) return null;
+  if (t >= 49.592 && t < 49.75) return { dir: -1, shape: 'open', len: reopenLashLen(t) };
+  const flip = 1 - 2 * sstep(clamp((o - 0.15) / 0.35));     // +1 hanging, -1 up
+  if (flip >= 0) return { dir: 1, shape: 'closed', len: 0.5 + 0.5 * flip, ticks: o < 0.004 };
+  return { dir: -1, shape: 'open', len: (0.3 + 0.7 * sstep((o - 0.5) / 0.45)) * (0.5 - 0.5 * flip) };
 }
 
 export default {
@@ -140,10 +127,7 @@ export default {
     const { canvas, ctx } = env.canvas(root);
     const rng = env.rng(48151623);
     const model = makeIrisModel(rng);
-    const outerLav = renderOuter(model, PALETTES.lav);
-    const outerWhite = renderOuter(model, PALETTES.white);
     const lashes = makeLashes(env.rng(777));
-    const closedLid = CLOSED_LID.map(([v,d])=>[v,new Path2D(d)]);
 
     // eye layer (transparent) and a tint buffer for the dizzy copies
     const EX = 520, EY = 160, EW = 1400, EH = 760;
@@ -172,7 +156,6 @@ export default {
     const gapOf = (lid, crease) => XS.map((x, i) => (inRange(crease, x) ? (lid[i] - sampleAtX(crease, [x])[0]) * taper(crease, x) : 0));
     const GAP_OPEN = gapOf(S_UP, CREASE_OPEN);
     const GAP_CA = gapOf(S_CA, CREASE_CLOSED_A), GAP_CB = gapOf(S_CB, CREASE_CLOSED_B);
-    const creaseAlpha = (x, pts) => taper(pts, x);
 
     const squintLo = (x) => -8 * Math.max(0, 1 - ((x - 1240) / 560) ** 2);
     function lidCurves(t) {
@@ -201,25 +184,9 @@ export default {
       const [cx, cy] = irisCenter(t);
       const rp = pupilR(t);
       const w = whiteness(t);
-      if (t >= 49.267 && t <= 49.567 && o < .004) {
-        for (const [v,path] of closedLid) {
-          ec.fillStyle=`rgb(${v},${v},${Math.min(255,v+5)})`;
-          ec.fill(path,'evenodd');
-        }
-        return {cx,cy,rp,w,o};
-      }
-      if (t < 47.76 && o < .004) {
-        // first frames of the shot: the same closed lid, slightly higher (vertical shift by column)
-        for (let x0 = 680; x0 < 1770; x0 += 60) {
-          ec.save(); ec.beginPath(); ec.rect(x0, 0, 60, H); ec.clip();
-          ec.translate(0, -OPEN_SHOT_SHIFT(x0 + 30));
-          for (const [v,path] of closedLid) { ec.fillStyle=`rgb(${v},${v},${Math.min(255,v+5)})`; ec.fill(path,'evenodd'); }
-          ec.restore();
-        }
-        return {cx,cy,rp,w,o};
-      }
+      const shut = o < 0.004;
       // opening region
-      if (o > 0.004) {
+      if (!shut) {
         ec.save();
         ec.beginPath();
         catmull(ec, upper);
@@ -233,14 +200,9 @@ export default {
         for (let k = 0; k < 11; k++) { const r = 254 + 28.4 * k; ec.moveTo(cx + r, cy); ec.arc(cx, cy, r, 0, Math.PI * 2); }
         ec.stroke();
         // iris (own layer when split: the dizzy copies tint the iris and the line art differently)
-        const S = IRIS_CANVAS.S, C = IRIS_CANVAS.C, ic = split ? icx : ec;
+        const ic = split ? icx : ec;
         if (split) { ic.save(); ic.setTransform(1, 0, 0, 1, -EX, -EY); ic.beginPath(); catmull(ic, upper); catmull(ic, [...lower].reverse(), false); ic.closePath(); ic.clip(); }
         drawInner(ic, model, cx, cy, rp, w, t>=DIZZY_T0?{ noPupil: true, contrast:1.3, ...dizzyIris(t) }:{ noPupil: true });
-        ic.globalAlpha = 1 - w;
-        if (w < 1) ic.drawImage(outerLav, cx - C, cy - C);
-        ic.globalAlpha = w;
-        if (w > 0) ic.drawImage(outerWhite, cx - C, cy - C);
-        ic.globalAlpha = 1;
         if (withPupil) drawPupil(ic, cx, cy, rp, w > 0.5 ? PALETTES.white.ruff : PALETTES.lav.ruff);
         // specular highlight
         const g = glow(t);
@@ -261,7 +223,17 @@ export default {
         ec.restore();
       }
       // crease
-      {
+      if (shut) {
+        const pts = t < 48.5 ? CREASE_CLOSED_A : CREASE_CLOSED_B, x0 = pts[0][0], x1 = pts[pts.length - 1][0];
+        const fade = ec.createLinearGradient(x0, 0, x1, 0), k = 50 / (x1 - x0);
+        fade.addColorStop(0, 'rgba(200,200,215,0)');
+        fade.addColorStop(k, 'rgba(200,200,215,0.3)');
+        fade.addColorStop(1 - k, 'rgba(200,200,215,0.3)');
+        fade.addColorStop(1, 'rgba(200,200,215,0)');
+        ec.lineWidth = 1.2;
+        ec.strokeStyle = fade;
+        ec.beginPath(); catmull(ec, pts); ec.stroke();
+      } else {
         const gc = t < 48.5 ? GAP_CA : GAP_CB;
         const pts = [];
         XS.forEach((x, i) => {
@@ -274,11 +246,21 @@ export default {
           ec.beginPath(); catmull(ec, pts); ec.stroke();
         }
       }
-      // lids
+      // lids: closed, the lid margin is a thin line over a bright one
       ec.lineCap = 'round';
-      ec.strokeStyle = 'rgba(226,226,236,0.95)';
-      ec.lineWidth = 2;
-      ec.beginPath(); catmull(ec, upper); ec.stroke();
+      const lid = (dy) => upper.map(([x, y]) => [x, y + dy]);
+      if (shut) {
+        ec.lineWidth = 1.1;
+        ec.strokeStyle = 'rgba(200,200,212,0.6)';
+        ec.beginPath(); catmull(ec, lid(-0.6)); ec.stroke();
+        ec.lineWidth = 1.5;
+        ec.strokeStyle = 'rgba(240,240,248,0.95)';
+        ec.beginPath(); catmull(ec, lid(2.3)); ec.stroke();
+      } else {
+        ec.strokeStyle = 'rgba(226,226,236,0.95)';
+        ec.lineWidth = 2;
+        ec.beginPath(); catmull(ec, upper); ec.stroke();
+      }
       if (o > 0.02) {
         ec.lineWidth = 1.6;
         ec.strokeStyle = `rgba(214,214,226,${0.9 * clamp(o * 3)})`;
@@ -288,38 +270,14 @@ export default {
         ec.beginPath(); catmull(ec, upper.map(([x, y], i) => [x, y + 5 * Math.sin(Math.PI * i / (upper.length - 1))])); ec.stroke();
       }
       // lashes
-      // blink: the lashes shrink away as the lid starts to fall (gone at 49.217), then hang down
-      const reopen=t>=49.592&&t<49.75,closing=t>=49.15&&t<49.217;
-      const preciseLashAlpha=reopen||closing?1:t>=49.15&&t<49.267?0:sstep((o-.78)/.20),lashLen=reopen?reopenLashLen(t):closing?closeLashLen(t):1;
-      ec.globalAlpha=t>=49.15&&t<49.225?0:1-preciseLashAlpha;
-      const flip = 1 - 2 * sstep(clamp((o - 0.15) / 0.35));     // +1 closed (hang down), -1 open (point up)
-      ec.lineCap = 'round';
-      for (const l of lashes.up) {
-        const x = lerp(CORNER_L[0], CORNER_R[0], l.u);
-        const y = yAt(upper, x);
-        const dy = yAt(upper, x + 4) - yAt(upper, x - 4);
-        const tang = Math.atan2(dy, 8);
-        const nAng = tang + (flip < 0 ? -Math.PI / 2 : Math.PI / 2);
-        const ang = nAng + l.lean * (flip < 0 ? 1 : -0.7) * Math.abs(flip) ;
-        const L = l.len * (flip > 0 ? lerp(1, 0.90, flip) : 0.3 + 0.7 * sstep((o - 0.5) / 0.45)) * (0.5 + 0.5 * Math.abs(flip));
-        const ex = x + Math.cos(ang) * L, ey = y + Math.sin(ang) * L;
-        const mx = x + Math.cos(ang - l.bend * flip) * L * 0.55, my = y + Math.sin(ang - l.bend * flip) * L * 0.55;
-        ec.strokeStyle = `rgba(232,232,242,${l.a})`;
-        ec.lineWidth = l.w;
-        ec.beginPath(); ec.moveTo(x, y); ec.quadraticCurveTo(mx, my, ex, ey); ec.stroke();
+      const pose = lashPose(t, o);
+      if (pose) {
+        const root = shut ? 2.3 : 0;
+        drawLashes(ec, lashes, (x) => yAt(upper, x) + root, pose);
       }
       if (o > 0.3) {
-        for (const l of lashes.lo) {
-          const x = lerp(CORNER_L[0], CORNER_R[0], l.u);
-          const y = yAt(lower, x);
-          const dy = yAt(lower, x + 4) - yAt(lower, x - 4);
-          const ang = Math.atan2(dy, 8) + Math.PI / 2 - l.lean * 0.6;
-          ec.strokeStyle = `rgba(220,220,232,${l.a * o})`;
-          ec.lineWidth = 0.9;
-          ec.beginPath(); ec.moveTo(x, y + 1); ec.lineTo(x + Math.cos(ang) * l.len, y + 1 + Math.sin(ang) * l.len); ec.stroke();
-        }
+        drawLashes(ec, lashes, (x) => yAt(lower, x) + 1, { dir: 1, shape: 'lower', alpha: o });
         // inner corner: caruncle and semilunar fold
-        ec.globalAlpha=1;
         ec.globalAlpha = o;
         ec.strokeStyle = 'rgba(190,190,205,0.8)'; ec.lineWidth = 1.2;
         ec.beginPath(); ec.arc(707, 563, 17, -1.75, 1.75); ec.stroke();
@@ -328,17 +286,6 @@ export default {
         ec.strokeStyle = 'rgba(160,160,175,0.45)'; ec.lineWidth = 1;
         ec.beginPath(); ec.moveTo(737, 496); ec.quadraticCurveTo(725, 546, 737, 598); ec.stroke();
         ec.globalAlpha = 1;
-      }
-      if(preciseLashAlpha>0){
-        ec.globalAlpha=preciseLashAlpha;
-        const baselineUp=x=>sampleAtX(UPPER_OPEN,[x])[0]+9.33*Math.max(0,1-((x-1240)/576)**2);
-        const baselineLo=x=>sampleAtX(LOWER_OPEN,[x])[0]-5.18*Math.max(0,1-((x-1240)/560)**2);
-        LASHES.forEach((groups,side)=>{
-          const now=side?lower:upper,base=side?baselineLo:baselineUp;
-          ec.lineWidth=side?.6:.68;
-          // the dizzy copies dim the line art; the source's doubled lashes stay brighter (x1.4)
-          for(const [v0,paths] of groups){const v=Math.min(255,Math.round(v0*(t>=DIZZY_T0?1.4:1)));ec.strokeStyle=`rgb(${v},${v},${Math.min(255,v+8)})`;ec.beginPath();for(const p of paths){for(let j=0;j<p.length;j+=2){const x=p[j],y=yAt(now,x)+(p[j+1]-base(x))*lashLen;if(j)ec.lineTo(x,y);else ec.moveTo(x,y);}}ec.stroke();}
-        });ec.globalAlpha=1;
       }
       return { cx, cy, rp, w, o };
     }

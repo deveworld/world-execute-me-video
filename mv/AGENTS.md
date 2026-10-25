@@ -30,6 +30,8 @@ export default {
 
 `env` provides: `W`, `H`, `beat` (`BPM`, `BEAT0`, `SPB`, `beatAt(t)`, `timeAt(beat)`, `barAt(t)`), `anim` (`clamp`, `lerp`, `invLerp`, `prog(t, t0, len)`, `smoothstep`, `ease.*`, `rng`, `typed(text, t, t0, cps)`), `rng(seed)`, `canvas(root, { context: '2d'|'webgl'|'webgl2'|null, width, height, options })`, `loadFont(family, url)`, `loadImage(url)`, `loadJSON(url)`. Modules can also be imported relative to your scene file, e.g. `import { ease } from '../../engine/lib/anim.js'`.
 
+Canvases: the live viewer can draw 2D canvases at 1.5 or 2 device pixels per stage pixel (`engine/hidpi.js`; `stage.html?scale=2` at that devicePixelRatio). Scenes don't need to do anything: a canvas reports the size it was given, the context starts scaled, and `setTransform`, shadows, `filter` lengths, `getImageData`/`putImageData`, `drawImage` source rectangles and ImageBitmaps keep working in stage units. `render.mjs` always uses scale 1.
+
 URLs: the site may be served under a path prefix (GitHub Pages), so never hand a host-absolute path to `fetch`, `FontFace` or `import`. Use relative imports and `new URL('./x', import.meta.url).href`, or pass `/scenes/...` to `env.loadJSON`/`env.loadFont`/`env.loadImage`, which resolve it against the project root.
 
 Anything goes inside a scene: DOM/CSS (the right tool for UI mockups such as terminals, chat apps, IDEs, htop — build real HTML and update it in `render(t)`), Canvas 2D, WebGL. Third-party libraries (three.js, d3-geo, topojson…) must be downloaded as ES-module builds into `scenes/<segment>/vendor/` — no CDN at render time, no npm installs in the project.

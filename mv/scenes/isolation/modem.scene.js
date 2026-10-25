@@ -1,10 +1,11 @@
 // "If I can, if I can feel your VIBRATIONS / Then I can, then I can finally be COMPLETION"
 // A modem dialer panel (ATDT9W5550130): spectrogram of the dial/handshake tones written by a playhead,
 // the lyric typed in Share Tech Mono below, a peach / lavender highlight bar on the key word.
-// Everything is drawn on one Canvas2D; the spectrogram content is pre-rendered once in create().
+// Everything is drawn on one Canvas2D; the spectrogram content is pre-rendered once in create(): the dial
+// tones, DTMF and ANSam as vector shapes, the V.8 / V.34 part from lib/modem-spectra.js.
 import { clamp } from '../../engine/lib/anim.js';
-import { HANDSHAKE_CONTOURS } from './lib/handshake-contours.js';
-import { TRAINING_CONTOURS } from './lib/training-contours.js';
+import { canvasScale } from '../../engine/hidpi.js';
+import { renderSpectra } from './lib/modem-spectra.js';
 
 const T0 = 103.6;
 const SPB = 60 / 130;
@@ -137,11 +138,7 @@ function drawStatic(ctx) {
 }
 
 // ---------- spectrogram content (drawn once) ----------
-function drawContent(ctx, rng) {
-  const lav = [173, 176, 246];
-  const pch = [253, 192, 160];
-  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
-
+async function drawContent(ctx) {
   const hline = (x0, x1, y, h, col, blur = 1) => {
     ctx.filter = `blur(${blur}px)`;
     ctx.fillStyle = col;
@@ -176,8 +173,6 @@ function drawContent(ctx, rng) {
   }
 
   // DTMF FFT bins: flat cut-off at each end, thick lobes and a narrow dark neck.
-  // The shared analytic field matches the native tone widths; its fine variation
-  // doesn't draw from the handshake texture's RNG.
   for (const [, x, lo, hi] of DIGITS) {
     if (!lo) continue;
     for (const f of [lo, hi]) {
@@ -232,111 +227,11 @@ function drawContent(ctx, rng) {
     ctx.filter = 'none';
   }
 
-  const mix = (c, k, add = 0) => c.map((v) => Math.round(Math.min(255, v * k + add)));
-  // FSK "puff" clouds (V.8 CM / JM): dim bumpy caps above/below a light body, horizontally smeared
-  const puffs = (x0, x1, yc, col, n) => {
-    const w = (x1 - x0) / n;
-    ctx.filter = 'blur(5px)';
-    ctx.fillStyle = rgba(mix(col, 0.5), 0.22);
-    ctx.fillRect(x0, yc - 30, x1 - x0, 60);
-    for (let i = 0; i < n; i++) {
-      const cx = x0 + w * (i + 0.5);
-      ctx.filter = 'blur(1.3px)';
-      ctx.fillStyle = rgba(mix(col, 0.62), 0.55);
-      roundRect(ctx, cx - w * 0.36, yc - 31, w * 0.72, 17, 6);
-      ctx.fill();
-      roundRect(ctx, cx - w * 0.36, yc + 14, w * 0.72, 17, 6);
-      ctx.fill();
-      ctx.fillStyle = rgba(mix(col, 0.35), 0.8);
-      for (const dy of [-26, -21, 19, 24]) ctx.fillRect(cx - w * 0.3 + rng() * 4, yc + dy, w * 0.5, 1.6);
-      ctx.fillStyle = rgba(mix(col, 1.0, 12), .82);
-      roundRect(ctx, cx - w * 0.52, yc - 16, w * 1.04, 32, 7);
-      ctx.fill();
-      ctx.fillStyle = rgba(mix(col, 0.8), 0.45);
-      for (let k = 0; k < 34; k++) {
-        ctx.beginPath();
-        ctx.ellipse(cx + (rng() - 0.5) * w * 1.0, yc + (rng() - 0.5) * 31, 2.5 + rng() * 3, .7 + rng() * 1.4, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = rgba(mix(col, 1.0, 25), 0.62);
-      ctx.beginPath();
-      ctx.ellipse(cx, yc + 26, w * 0.26, 2.6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.filter = 'none';
-    }
-  };
-  puffs(1097, 1255, fy(1090), lav, 5);
-  hline(1255, 1267, fy(1090), 46, rgba(lav, 0.5), 2);
-  puffs(1179, 1267, fy(1760), pch, 3);
-
-  // INFO / probing preamble blobs: narrow bumpy columns
-  const tallBlob = (x0, x1, y0, y1, col) => {
-    ctx.filter = 'blur(1.4px)';
-    ctx.fillStyle = rgba(mix(col, 0.92), .78);
-    roundRect(ctx, x0 + 2, y0, x1 - x0 - 4, y1 - y0, 7);
-    ctx.fill();
-    ctx.fillStyle = rgba(mix(col, 0.7), 0.7);
-    for (let y = y0 + 4; y < y1 - 3; y += 6.5) {
-      ctx.fillRect(x0 + 1, y, 3, 2);
-      ctx.fillRect(x1 - 4, y + 3, 3, 2);
-      ctx.fillRect(x0 + 4 + rng() * (x1 - x0 - 10), y + 1, 4, 1.5);
-    }
-    ctx.filter = 'none';
-  };
-  tallBlob(1274, 1295, 350, 430, pch);
-  tallBlob(1274, 1293, 457, 535, lav);
-  hline(1295, 1340, 387, 6, rgba(pch, 0.95), 1.2);
-  hline(1293, 1335, 496, 5, rgba(lav, 0.95), 1.2);
-  for (const [x, y, col] of [[1318, 387, pch], [1330, 387, pch], [1322, 496, lav]]) {
-    ctx.filter = 'blur(1.5px)';
-    ctx.fillStyle = rgba(col, 1);
-    ctx.beginPath();
-    ctx.ellipse(x, y, 4, 13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.filter = 'none';
-  }
-  // (the two bow-tie connectors at x 1400-1421 come from TRAINING_CONTOURS)
-
-  // V.34 line probing: tones every 150 Hz, 900/1200/1800/2400 omitted
-  const probe = (x0, x1, col, strength) => {
-    ctx.save();
-    ctx.globalAlpha = strength;
-    ctx.filter = 'blur(2px)';
-    ctx.fillStyle = rgba(mix(col, 0.42), 0.55);
-    ctx.fillRect(x0, fy(3790), x1 - x0, fy(110) - fy(3790));
-    ctx.filter = 'blur(0.8px)';
-    for (let k = 1; k <= 25; k++) {
-      const f = 150 * k;
-      if ([900, 1200, 1800, 2400].includes(f)) continue;
-      ctx.fillStyle = rgba(mix(col, 0.98), 1);
-      ctx.fillRect(x0, fy(f) - 2, x1 - x0, 4);
-      ctx.fillStyle = rgba(mix(col, 1, 30), 0.8);
-      ctx.fillRect(x0 + 2, fy(f) - 0.8, (x1 - x0) * 0.55, 1.6);
-    }
-    ctx.filter = 'none';
-    ctx.restore();
-  };
-  probe(1340, 1400, pch, .75);
-  probe(1420, 1470, lav, .85);
-  tallBlob(1471, 1495, 350, 430, pch);
-  ctx.filter = 'blur(2px)';
-  ctx.fillStyle = rgba(mix(lav, 0.85), 1);
-  roundRect(ctx, 1471, 457, 34, 78, 8);
-  ctx.fill();
-  ctx.filter = 'none';
-  puffs(1471, 1505, 496, mix(lav, 0.95), 1);
-
-  // (training blocks: drawn from contours below, after the handshake lobes)
-
-  // The handshake is a spectral density field with uneven lobes and ridges, drawn from vector contours.
-  // Training blocks: a lavender comb of horizontal lines then pink noise, also drawn from contours.
-  for(const [box,layers] of [...HANDSHAKE_CONTOURS, ...TRAINING_CONTOURS]){
-    ctx.clearRect(...box);
-    for(const [color,alpha,d] of layers){
-      ctx.fillStyle=`rgba(${color.join(',')},${alpha})`;
-      ctx.fill(new Path2D(d),'evenodd');
-    }
-  }
+  // CM / JM, INFO, line probing and training: drawn per pixel at the canvas's device resolution
+  const sp = renderSpectra(canvasScale());
+  const bitmap = await createImageBitmap(new ImageData(sp.data, sp.w, sp.h));
+  ctx.drawImage(bitmap, sp.x0, sp.y0, sp.x1 - sp.x0, sp.y1 - sp.y0);
+  bitmap.close();
 }
 
 export default {
@@ -344,12 +239,12 @@ export default {
   start: 103.6,
   end: 110.9333,
   fonts: [`400 50px ${FONT}`],
-  create(root, env) {
+  async create(root, env) {
     const { ctx } = env.canvas(root);
     const stat = makeCanvas(1920, 1080);
     drawStatic(stat.getContext('2d'));
     const content = makeCanvas(1920, 1080);
-    drawContent(content.getContext('2d'), env.rng(7));
+    await drawContent(content.getContext('2d'));
     const scratch = makeCanvas(64, 400);
     const sctx = scratch.getContext('2d');
 

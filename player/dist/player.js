@@ -22,7 +22,7 @@ let fps = Number(fpsSelect.value), lastFrame = framesAt(fps) - 1;
 let stage, isReady = false, playing = false, frame = 0, rate = 1, raf = 0;
 let anchorTime = 0, anchorNow = 0, audioClock = false, audioAvailable = true;
 let requestedTime = null, drawing = false, lastDrawnTime = -1, starting = false, fatal = false;
-let audioGeneration = 0, renderSize = [STAGE_W, 1080], downscaled = false, muted = false;
+let audioGeneration = 0, renderSize = [STAGE_W, 1080], downscaled = false, muted = false, canvasScale = 1, scaleTimer = 0;
 let sound = 'file', yt = null, ytWant = 'pause', ytWantAt = 0, pending = null, free = false, stalled = false, skew = 0, lastReported = NaN;
 let hideTimer = 0, toastTimer = 0, overBar = false, scrubbing = false, resumeAfterScrub = false;
 let pointerInput = false, lastPointerType = 'mouse', lastPointer = '', mouseX = -1, mouseY = -1, mouseAt = 0;
@@ -43,11 +43,21 @@ function layout() {
   Object.assign(screen.style, { width: `${w}px`, height: `${h}px`, left: `${Math.round((vw - w) / 2 * dpr) / dpr}px`, top: `${Math.round((vh - h) / 2 * dpr) / dpr}px` });
   iframe.style.transform = `scale(${w / STAGE_W})`;
   renderSize = [px, Math.round(px * 9 / 16)];
+  setCanvasScale(px / STAGE_W);
   const fitPx = Math.floor(fit * dpr + 1e-6), fitSize = `${fitPx} × ${Math.round(fitPx * 9 / 16)}`;
   resolutionSelect.options[0].textContent = vw > 820 ? `화면 맞춤 · ${fitSize}` : `맞춤 ${fitSize.replaceAll(' ', '')}`;
   $('scale-note').hidden = !downscaled;
   $('scale-note').value = downscaled ? `창이 작아 축소: ${renderSize[0]} × ${renderSize[1]}` : '';
   $('scale-note').title = downscaled ? `1:1로 보려면 창이 ${Math.ceil(fixed / dpr)} × ${Math.ceil(fixed * 9 / 16 / dpr)} 이상이어야 합니다. 전체 화면(F)을 써 보세요.` : '';
+}
+// Canvas scenes are drawn at 1, 1.5 or 2 device pixels per stage pixel, whichever covers the render size.
+// A change makes the stage create every scene again, so it waits until resizing settles.
+function setCanvasScale(ratio) {
+  const k = ratio <= 1.05 ? 1 : ratio <= 1.55 ? 1.5 : 2;
+  clearTimeout(scaleTimer);
+  if (k === canvasScale) return;
+  if (!isReady) { canvasScale = k; return; }
+  scaleTimer = setTimeout(() => { canvasScale = k; lastDrawnTime = -1; void draw(frame / fps); }, 400);
 }
 new ResizeObserver(layout).observe(player);
 (function watchPixelRatio() {
@@ -129,9 +139,10 @@ async function warmNext() {
   const distance = s => t < s.start ? s.start - t : t >= s.end ? t - s.end + 1e-3 : 0;
   const next = cold.sort((a, b) => distance(a) - distance(b))[0];
   warming = true;
-  try { await stage.prewarm(Math.max(next.start, Math.min(t, next.end - 1e-3))); }
+  let created = 0;
+  try { created = await stage.prewarm(Math.max(next.start, Math.min(t, next.end - 1e-3))); }
   finally { warming = false; }
-  scheduleWarm(playing ? 200 : 0);
+  scheduleWarm(!created ? 1000 : playing ? 200 : 0);
 }
 
 function fail(error) {
@@ -155,6 +166,7 @@ async function draw(t) {
       const next = requestedTime;
       requestedTime = null;
       if (next === lastDrawnTime) continue;
+      if (stage.scale() !== canvasScale && await stage.setScale(canvasScale)) scheduleWarm(300);
       await stage.renderFrame(next);
       if (stage.errors.length) throw new Error(stage.errors.at(-1).message);
       lastDrawnTime = next;
@@ -569,6 +581,6 @@ window.__player = {
   ready, seek: seekTime, play, pause,
   get state() {
     return { ready: isReady, playing, frame, fps, lastFrame, time: frame / fps, lastDrawnTime, drawing, rate, audioClock, audioAvailable, fatal, sound, youtube: yt?.getPlayerState() ?? null, stalled, free,
-      resolution: resolutionSelect.value, renderSize: [...renderSize], downscaled, barVisible: !document.body.classList.contains('idle') };
+      resolution: resolutionSelect.value, renderSize: [...renderSize], downscaled, canvasScale: stage?.scale?.() ?? canvasScale, barVisible: !document.body.classList.contains('idle') };
   },
 };

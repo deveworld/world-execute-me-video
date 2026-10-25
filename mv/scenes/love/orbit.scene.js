@@ -6,7 +6,7 @@ import { DETECTOR } from './orbit/detector.js';
 import { LABELS } from './orbit/labels.js';
 import { ORBIT_MOTION } from './orbit/motion.js';
 import { OPENING_PATHS } from './orbit/opening.js';
-import { CENTRAL_FIELD } from './orbit/central-field.js';
+import { VERTEX_BURSTS } from './orbit/vertex.js';
 import { BURST_TRACKS, BURST_INNER } from './orbit/tracks.js';
 import { JETS } from './orbit/jets.js';
 import { EVENT_LOOPS } from './orbit/loops.js';
@@ -41,7 +41,9 @@ export default {
     const bandFill=new Path2D();bandFill.arc(CX,CY,279.4,0,TAU);bandFill.moveTo(CX+272.6,CY);bandFill.arc(CX,CY,272.6,0,TAU,true);
     const tick=new Path2D();for(const sign of [-1,1]){tick.moveTo(CX,CY+sign*413);tick.lineTo(CX,CY+sign*423);}
     const LAYERS=[
-      [ringPath([5,12,20,28,44,62,80,98,118,140,164]),[[172.233,.46],[172.25,1.33],[172.333,1.28],[172.367,1.25],[172.4,1.13],[172.433,1.1],[172.5,1.08],[172.6,.97],[172.7,.9],[172.8,.85]],.0],
+      // The innermost rings light up with the burst at 172.35, after the outer layers.
+      [ringPath([5,12,20,28]),[[172.333,.46],[172.35,1.37],[172.4,1.57],[172.45,1.6],[172.5,1.5],[172.55,1.39],[172.6,1.27],[172.65,1.1],[172.7,1.04],[172.75,.95],[172.8,.89]],.0],
+      [ringPath([44,62,80,98,118,140,164]),[[172.233,.46],[172.25,1.33],[172.333,1.28],[172.367,1.25],[172.4,1.13],[172.433,1.1],[172.5,1.08],[172.6,.97],[172.7,.9],[172.8,.85]],.0],
       [ringPath([184,208]),[[172.183,.74],[172.2,2.57],[172.233,2.35],[172.267,1.98],[172.3,1.78],[172.333,1.61],[172.367,1.55],[172.4,1.45],[172.467,1.4],[172.5,1.38],[172.6,1.33],[172.733,1.27]],.16],
       [linePath(184,208),[[172.183,1.26],[172.2,3.16],[172.233,2.95],[172.267,2.58],[172.3,2.2],[172.333,2.05],[172.4,1.84],[172.5,1.74],[172.8,1.68]],.63],
       [ringPath([212,262]),[[172.117,.73],[172.133,1.95],[172.2,1.97],[172.233,1.85],[172.267,1.6],[172.3,1.51],[172.333,1.42],[172.4,1.35],[172.5,1.31],[172.6,1.29],[172.8,1.25]],.15],
@@ -116,35 +118,80 @@ export default {
         }
         return any?buckets:null;
       };
-      const draw=(buckets,clipR)=>{
+      const draw=(buckets,clipR,innerR=0)=>{
         if(!buckets)return;
-        ctx.save();ctx.beginPath();ctx.arc(CX,CY,clipR,0,TAU);ctx.clip();ctx.lineWidth=1;
+        ctx.save();ctx.beginPath();ctx.arc(CX,CY,clipR,0,TAU);
+        if(innerR){ctx.moveTo(CX+innerR,CY);ctx.arc(CX,CY,innerR,0,TAU,true);}
+        ctx.clip();ctx.lineWidth=1;
         for(let q=1;q<NL;q++){ctx.strokeStyle=`rgba(242,240,255,${q/NL})`;ctx.stroke(buckets[q]);}
         ctx.restore();
       };
-      draw(collect(BURST_TRACKS),184);
-      // Inside r < 62 the central field carries the bursts until 172.925.
+      // Inside r < 61.5 the central field carries the bursts until 172.925.
+      draw(collect(BURST_TRACKS),184,t<172.925?61.5:0);
       if(t>=172.925)draw(collect([BURST_INNER]),61.5);
     }
-    const centralPaths=new Map();
+    // Central field: on every burst charged particles leave the vertex. A track starts on a circle
+    // through the vertex and tightens into a spiral as the particle slows down: its radius at arc
+    // length s is r0*(1-s/S)^0.7 for a particle with range S. Tracks grow outward at a fixed speed,
+    // each point fades like the outer tracks from the moment it is drawn, beads mark the hits, and
+    // the vertex glows lavender.
+    const SPIRAL_EXP=.7,REVEAL_SPEED=37,REVEAL_DELAY=.5,VERTEX_FADE=8,BEAD_GAIN=1.5,NF=40;
+    function spiral(th,r0,S,len){
+      const pts=[];let x=0,y=0;
+      for(let j=0;j*.5<=len;j++){
+        const s=j*.5,u=S?1-s/S:1;
+        if(S&&Math.abs(r0)*Math.pow(u,SPIRAL_EXP)<=1.2)break;
+        if(j%2===0)pts.push(x,y);
+        const a=S?th+S/r0*(1-Math.pow(u,1-SPIRAL_EXP))/(1-SPIRAL_EXP):th+s/r0;
+        x+=.5*Math.cos(a);y+=.5*Math.sin(a);
+      }
+      return Float32Array.from(pts);
+    }
+    // Track colour by distance from the vertex: white, tinted lavender towards the core.
+    const fieldColor=(k)=>`rgb(${Math.round(240-55*k)},${Math.round(240-62*k)},${Math.round(242+13*k)})`;
+    const vertexBursts=VERTEX_BURSTS.map(([f0,tint,glow,halo,tracks])=>{
+      const style=ctx.createRadialGradient(CX,CY,0,CX,CY,61.5);
+      style.addColorStop(0,fieldColor(tint));style.addColorStop(.33,fieldColor(tint*.7));style.addColorStop(1,fieldColor(tint*.45));
+      return{f0,glow,halo,style,tracks:tracks.map(([th,r0,S,len,I],i)=>{
+        const pts=spiral(th*D,r0,S,len),n=pts.length/2,rand=rng(f0*97+i),beads=[];
+        for(let at=3+6*rand();at<n;at+=6+6*rand())beads.push(Math.round(at));
+        return{pts,beads,v:I/255};
+      })};
+    });
+    const fieldFade=(a)=>{const i=Math.floor(a);return i<0||i>=FADE.length-1?0:FADE[i]+(FADE[i+1]-FADE[i])*(a-i);};
+    // Vertex glow: a small lavender-white core and a wider blue-lavender halo (gaussian profiles).
+    const gaussGlow=(sigma,rgb)=>{const g=ctx.createRadialGradient(CX,CY,0,CX,CY,3*sigma);
+      for(let k=0;k<=6;k++)g.addColorStop(k/6,`rgba(${rgb},${k<6?Math.exp(-k*k/8):0})`);return g;};
+    const glowCore=gaussGlow(1.5,'220,216,255'),glowHalo=gaussGlow(7,'140,128,255');
     function centralField(t){
       if(t>=172.925)return;
-      const i=clamp(Math.round(t*60)-CENTRAL_FIELD[0][0],0,CENTRAL_FIELD.length-1);
-      if(!centralPaths.has(i)){
-        centralPaths.set(i,CENTRAL_FIELD[i][1].map(([alpha,d])=>[alpha,new Path2D(d)]));
-        if(centralPaths.size>8)centralPaths.delete(centralPaths.keys().next().value);
-      }
-      ctx.save();ctx.beginPath();ctx.arc(CX,CY,61.5,0,TAU);ctx.clip();ctx.fillStyle='rgb(6,5,10)';ctx.fillRect(CX-63,CY-63,126,126);
-      // The cluster is lavender at its core and whiter outward (B/G 1.2 -> 1.1); the gain
-      // keeps its luminance and timing.
-      let previous=0,scaledPrevious=0;
-      for(const[alpha,path]of centralPaths.get(i)){
-        const cumulative=previous+(1-previous)*alpha,scaled=Math.min(1,cumulative*1.32);
-        const coverage=scaledPrevious>=1?0:(scaled-scaledPrevious)/(1-scaledPrevious);
-        const g=ctx.createRadialGradient(CX,CY,0,CX,CY,61.5);
-        g.addColorStop(0,`rgba(214,209,255,${coverage})`);g.addColorStop(.33,`rgba(219,214,255,${coverage})`);g.addColorStop(1,`rgba(230,226,255,${coverage})`);
-        ctx.fillStyle=g;ctx.fill(path,'evenodd');
-        previous=cumulative;scaledPrevious=scaled;
+      ctx.save();ctx.beginPath();ctx.arc(CX,CY,61.5,0,TAU);ctx.clip();
+      ctx.globalCompositeOperation='lighter';ctx.lineWidth=1;
+      for(const b of vertexBursts){
+        const age=t*60-b.f0;if(age<0||age>REVEAL_DELAY+FADE.length+12)continue;
+        const lit=fieldFade(age-REVEAL_DELAY);
+        for(const[style,a,r]of[[glowCore,b.glow,4.5],[glowHalo,b.halo,21]])if(a*lit>0){ctx.globalAlpha=a*lit;ctx.fillStyle=style;ctx.fillRect(CX-r,CY-r,2*r,2*r);}
+        ctx.globalAlpha=1;
+        const lines=Array.from({length:NF},()=>new Path2D()),dots=Array.from({length:NF},()=>new Path2D());
+        for(const{pts:p,beads,v}of b.tracks){
+          const n=p.length/2;let prev=-1;
+          for(let i=1;i<n;i++){
+            const a=age-REVEAL_DELAY-i/REVEAL_SPEED;if(a<0)break;
+            // Tracks emerge from the vertex glow over their first few pixels.
+            const q=Math.min(NF-1,Math.round(v*fieldFade(a)*Math.min(1,i/VERTEX_FADE)*NF));
+            if(q<=0){prev=-1;continue;}
+            if(q!==prev)lines[q].moveTo(CX+p[2*i-2],CY+p[2*i-1]);
+            lines[q].lineTo(CX+p[2*i],CY+p[2*i+1]);prev=q;
+          }
+          for(const i of beads){
+            const a=age-REVEAL_DELAY-i/REVEAL_SPEED;if(a<0)break;
+            const q=Math.min(NF-1,Math.round(Math.min(1,v*BEAD_GAIN*fieldFade(a)*Math.min(1,i/VERTEX_FADE))*NF));if(q<=0)continue;
+            const x=CX+p[2*i],y=CY+p[2*i+1];dots[q].moveTo(x+.8,y);dots[q].arc(x,y,.8,0,TAU);
+          }
+        }
+        ctx.strokeStyle=ctx.fillStyle=b.style;
+        for(let q=1;q<NF;q++){ctx.globalAlpha=q/NF;ctx.stroke(lines[q]);ctx.fill(dots[q]);}
+        ctx.globalAlpha=1;
       }
       ctx.restore();
     }

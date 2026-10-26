@@ -12,35 +12,14 @@ const D2R = Math.PI / 180;
 const X = (th) => PLOT.x0 + th * U;              // θ (rad) → px
 const Y = (v) => PLOT.y0 - v * U;
 
-function table(tab, t) {
-  if (t <= tab[0][0]) return tab[0][1];
-  for (let i = 1; i < tab.length; i++) {
-    if (t <= tab[i][0]) {
-      const [a, va] = tab[i - 1], [b, vb] = tab[i];
-      return va + (vb - va) * (t - a) / (b - a);
-    }
-  }
-  return tab[tab.length - 1][1];
+// The radius makes one eased revolution; the final ride enters with momentum and
+// brakes smoothly to its tangent angle.
+const traceAngle = (t) => 360 * ease.inOutSine(prog(t, 37.1487, 1.3662));
+function finalRide(t) {
+  const u = prog(t, 39.886, 0.464), u2 = u * u, u3 = u2 * u;
+  return -14.3 * (2 * u3 - 3 * u2 + 1) + 120 * (3 * u2 - 2 * u3)
+    + 165.645 * (u3 - 2 * u2 + u) - 58.856 * u2 * (1 - u) ** 2;
 }
-
-// trace: radius angle (deg) per frame, 37.15 → 38.5
-const TRACE = [[37.15, 0], [37.167, 1], [37.2, 1.2], [37.217, 2], [37.233, 4], [37.25, 5], [37.267, 7], [37.283, 9],
-  [37.3, 11], [37.317, 13.5], [37.333, 16], [37.35, 19], [37.367, 22], [37.383, 26], [37.4, 29], [37.417, 33],
-  [37.433, 37.5], [37.45, 42], [37.467, 46], [37.483, 51], [37.5, 56], [37.517, 61], [37.533, 66], [37.55, 71.5],
-  [37.567, 77], [37.583, 83], [37.6, 88], [37.617, 94], [37.633, 101], [37.65, 107], [37.667, 113], [37.683, 120],
-  [37.7, 126.5], [37.717, 133], [37.733, 139.5], [37.75, 146.5], [37.767, 153], [37.783, 160], [37.8, 166.5],
-  [37.817, 173.5], [37.833, 180], [37.85, 187], [37.867, 194.5], [37.883, 201.5], [37.9, 208], [37.917, 214.5],
-  [37.933, 221.5], [37.95, 228.5], [37.967, 234.5], [37.983, 241.5], [38.0, 247.5], [38.017, 254.5], [38.033, 260],
-  [38.05, 266], [38.067, 272], [38.083, 278], [38.1, 284], [38.117, 289.5], [38.133, 295.5], [38.15, 300.5],
-  [38.167, 305.5], [38.183, 310], [38.2, 315], [38.217, 319.5], [38.233, 324], [38.25, 328], [38.267, 332],
-  [38.283, 335.5], [38.3, 339], [38.317, 342], [38.333, 345], [38.35, 347.5], [38.367, 350], [38.383, 352],
-  [38.4, 354], [38.417, 356], [38.433, 357], [38.45, 358.3], [38.467, 359.2], [38.483, 359.8], [38.5, 360]];
-// fourth ride: run-up from just below 0 to 2π/3 (deg)
-const RIDE4 = [[39.886, -14.3], [39.9, -8.5], [39.917, -3], [39.933, 2.8], [39.95, 8.7], [39.967, 14.7],
-  [39.983, 20.8], [40.0, 27], [40.017, 33.3], [40.033, 39.6], [40.05, 45.8], [40.067, 51.6], [40.083, 57.6],
-  [40.1, 63.4], [40.117, 69.2], [40.133, 75.1], [40.15, 81], [40.167, 86.3], [40.183, 91.3], [40.2, 96],
-  [40.217, 100.4], [40.233, 104.4], [40.25, 108], [40.267, 111.4], [40.283, 114.2], [40.3, 116.3],
-  [40.317, 118], [40.333, 119.3], [40.35, 120]];
 const JUMPS = [[38.514, 0, 120], [38.977, 120, 240], [39.438, 240, 360]];
 const WRAP1 = 38.5, WRAP2 = 39.886;
 
@@ -52,11 +31,11 @@ export function rideDeg(t) {
   if (t < JUMPS[1][0]) return jump(t, ...JUMPS[0]);
   if (t < JUMPS[2][0]) return jump(t, ...JUMPS[1]);
   if (t < WRAP2) return jump(t, ...JUMPS[2]);
-  return table(RIDE4, t);
+  return finalRide(t);
 }
 // angle shown by the unit circle (deg)
 export function circleDeg(t) {
-  if (t < 38.5) return table(TRACE, t);
+  if (t < 38.5) return traceAngle(t);
   return rideDeg(t);
 }
 
@@ -239,7 +218,6 @@ export function createSine({ root }) {
     // circle side leaves for the limit verse: the ring shrinks about its centre
     // (r 191 → 157, accelerating) and fades 41.0–41.42; the crosshair retracts onto it; the radius,
     // θ arc and point fade a little later and faster.
-    // radius per frame (41.0–41.37)
     const sc = 1 - 0.1633 * Math.pow(Math.max(0, t - 40.985) / 0.36, 1.4);
     const out = 1 - ease.inQuad(prog(t, 41.0, 0.42));
     const handOut = 1 - prog(t, 41.07, 0.3);

@@ -1,22 +1,19 @@
 // Arecibo message: squares, glyphs, the scan line and light streaks.
 import DATA from './arecibo-data.js';
-import MOTION from './arecibo-motion.js';
-import HEART_PIGMENT from './heart-pigment.js';
-import CURVES from './arecibo-curves.js';
+import {createPixelText} from './pixel-text.js';
+import { messageMotion, messagePalette, personScale } from './message-model.js';
+import { createParticleField, sphereProgress, N } from '../../math/core/particles.js';
 const W=1920,H=1080,P=23,X=131,Y=283,SPB=60/130;
 const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,k)=>a+(b-a)*k;
-// Per-frame pigment curve (held at both ends).
-function curve(name,t){const c=CURVES[name],x=t*60-c.f0,n=c.rgb.length-1;if(x<=0)return c.rgb[0];if(x>=n)return c.rgb[n];const i=Math.floor(x),k=x-i;return c.rgb[i].map((v,j)=>v+(c.rgb[i+1][j]-v)*k);}
-// Squares briefly swell to close their gaps when a label lands.
-const FLASH={globe:{1453:2,1454:2},comp:{1564:2,1565:2},person:{1674:2,1675:2,1676:2,1677:.7},
- // reprise: the blocks swell when the equations start typing, the heart when its last column lands,
- // the person when the dissolve starts
- rblk:{11838:2},rheart:{12115:2},rperson:{12336:2,12337:1.6}};
-const flashAt=(g,t)=>FLASH[g][Math.round(t*60)]||0;
-// Person scale while it collapses into the single point (bbox height / 341 px).
-const SHRINK=[[28.8167,1],[28.8333,.94],[28.85,.854],[28.8667,.775],[28.8833,.70],[28.9,.627],[28.9167,.56],[28.9333,.499],[28.95,.443],[28.9667,.39],[28.9833,.343],[29,.302],[29.0167,.264],[29.0333,.232],[29.05,.202],[29.0667,.173],[29.0833,.15],[29.1,.129],[29.1167,.111],[29.1333,.097],[29.15,.085],[29.1667,.071],[29.1833,.059],[29.2,.05],[29.2167,.039],[29.2333,.03]];
-// Soft left-to-right fade of the bitmap labels when the message dissolves.
+// Labels briefly swell their pixel shapes when they land.
+const FLASH = { globe:[24.2167,0.0333], comp:[26.0667,0.0333], person:[27.9,0.06],
+  rblk:[197.3,0.0167], rheart:[201.9167,0.0167], rperson:[205.6,0.0333] };
+const flashAt = (group, t) => {
+  const [start, duration] = FLASH[group], age = t - start;
+  return age >= 0 && age < duration ? 2 * Math.min(1, (duration - age) / 0.013) : 0;
+};
+// Labels dissolve in a soft sweep from left to right.
 const WIPE_W=330;
 const wipeFront=(t,rep)=>rep?6700*(t-205.6):129+6400*(t-28.383);
 const inOutCubic=k=>k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
@@ -59,25 +56,6 @@ function offCell(ctx,x,y){
  ctx.fillStyle='#5e5f67';ctx.fillRect(x,y-1,1,3);ctx.fillRect(x-1,y,3,1);
  ctx.fillStyle='#51525a';ctx.fillRect(x,y,1,1);
 }
-export function bitmapText(ctx,s,x,y,p,color,alpha=1,cut=Infinity,alphaAt=null){
- ctx.save();ctx.fillStyle=color;ctx.globalAlpha=alpha;
- const q=p*.84;
- for(let n=0;n<s.length;n++){
-  const pat=DATA.glyphs[s[n]];if(!pat)continue;
-  for(let j=0;j<7;j++)for(let i=0;i<5;i++)if(pat[j][i]==='1'){
-   const xx=x+n*6*p+(i+.5)*p,yy=y+(j+.5)*p;
-   if(xx>cut)continue;
-   if(alphaAt){const a=alpha*alphaAt(xx);if(a<=0)continue;ctx.globalAlpha=a;}
-   ctx.fillRect(xx-q/2,yy-q/2,q,q);
-  }
- }
- ctx.restore();
-}
-function pulse(t){const ph=((t-.212)/SPB%1+1)%1;return Math.exp(-ph*6.5);}
-function table(t,rows){if(t<=rows[0][0])return rows[0][1];for(let i=1;i<rows.length;i++)if(t<rows[i][0])return lerp(rows[i-1][1],rows[i][1],(t-rows[i-1][0])/(rows[i][0]-rows[i-1][0]));return rows[rows.length-1][1];}
-function motionAt(t,rep){const a=rep?MOTION.reprise:MOTION.intro;if(t<=a[0][0])return a[0];if(t>=a[a.length-1][0])return a[a.length-1];let lo=0,hi=a.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(a[m][0]<=t)lo=m;else hi=m;}const k=(t-a[lo][0])/(a[hi][0]-a[lo][0]);return a[lo].map((v,i)=>lerp(v,a[hi][i],k));}
-function heartPigment(t){const a=HEART_PIGMENT;if(t<=a[0][0])return C.W;if(t>=a.at(-1)[0])return a.at(-1).slice(1);let lo=0,hi=a.length-1;while(hi-lo>1){const m=(lo+hi)>>1;if(a[m][0]<=t)lo=m;else hi=m;}const k=(t-a[lo][0])/(a[hi][0]-a[lo][0]);return a[lo].slice(1).map((v,i)=>lerp(v,a[hi][i+1],k));}
-function cellSize(t,rep){const start=rep?193.6:22.366667,age=t-start;if(age<.45)return table(age,rep?[[0,11.5],[.1,10.3],[.25,7.85],[.4,6.75],[.45,6.35]]:[[0,15],[.033333,14.2],[.1,11.6],[.166667,10.1],[.233333,8.8],[.383333,6.8],[.45,6.4]]);const ageBeat=((t-.212)%SPB+SPB)%SPB;return table(ageBeat,[[0,9.2],[.033333,8.7],[.066667,8.1],[.166667,6.9],[.316667,5.9],[.461538,5.6]]);}
 function beveledCell(ctx,x,y,q,col){const left=x-(q-1)/2,top=y-(q-1)/2;ctx.globalAlpha=1;ctx.fillStyle='#00020b';ctx.fillRect(left-1,top-1,q+2,q+2);const grad=ctx.createLinearGradient(0,top,0,top+q);grad.addColorStop(0,rgb(col.map(v=>v*1.035)));grad.addColorStop(.48,rgb(col));grad.addColorStop(1,rgb(col.map(v=>v*.98)));ctx.fillStyle=grad;ctx.fillRect(left,top,q,q);const bevel=.98+.19*clamp((15-q)/4);ctx.strokeStyle=rgb(col.map(v=>v*bevel));ctx.lineWidth=.8;ctx.strokeRect(left+.4,top+.4,Math.max(0,q-.8),Math.max(0,q-.8));ctx.fillStyle=rgb(col.map(v=>v*1.085));ctx.fillRect(left+.6,top+.4,Math.max(0,q-1.2),.8);ctx.fillStyle=rgb(col.map(v=>v*.945));ctx.fillRect(left+.6,top+q-1.2,Math.max(0,q-1.2),.8);}
 // Scan line: a 2 px near-white core with a ~7 px lavender glow, spanning the panel.
 function scan(ctx,x,a=1){if(x<114||x>1807)return;ctx.save();ctx.globalAlpha=a*.13;ctx.fillStyle='#c8c8f0';ctx.fillRect(x-7,273,14,527);ctx.globalAlpha=a*.16;ctx.fillRect(x-3.5,273,7,527);ctx.globalAlpha=a;ctx.shadowColor='#e9e6ff';ctx.shadowBlur=6;ctx.fillStyle='#fbfbfe';ctx.fillRect(x-1,273,2,527);ctx.restore();}
@@ -96,40 +74,40 @@ function streak(ctx,x,y,am,w0,core='rgba(242,242,255,1)',base=3.3){
  const g=ctx.createLinearGradient(0,yy-hh/2,0,yy+hh/2);g.addColorStop(0,'rgba(182,181,216,.75)');g.addColorStop(.1,core);g.addColorStop(.65,core);g.addColorStop(1,'rgba(160,163,198,0)');square(ctx,x,yy,ww,hh,g,a,false);
 }
 function markerPos(t){const k=inOutCubic(clamp((t-28.83)/.9));return[lerp(1626,845,k),lerp(536,220.6,k)];}
-// Matching procedural handoff field used by the adjacent math segment.
+// The message hands the same seeded particles to the sphere scene.
 function makeParticleField(env){
- const rnd=env.rng(20240629),N=1679,NT=1000,pair=new Uint8Array(N),grp=new Int32Array(N),dup=new Uint8Array(N),G=[],S=[],Sz=[],Bd=[];
- const cand=[];for(let r=0;r<23;r++)for(let c=0;c<72;c+=2)cand.push(r*73+c);
- for(let i=cand.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[cand[i],cand[j]]=[cand[j],cand[i]];}
- cand.slice(0,N-NT).forEach(i=>pair[i]=1);let g=0;
- for(let i=0;i<N;i++){
-  const r=Math.floor(i/73),c=i%73;G[i]=[961.5+(c-36)*23.1,535.5+(r-11)*22.8];
-  if(c>0&&pair[i-1]&&!dup[i-1]){grp[i]=grp[i-1];dup[i]=1;continue;}
-  grp[i]=g;let u=clamp((c+(pair[i]?.5:0)-36)/36.5+(rnd()-.5)*.05,-1,1),v=clamp((r-11)/11.5+(rnd()-.5)*.12,-1,1);
-  let x=u*Math.sqrt(1-v*v/2),y=v*Math.sqrt(1-u*u/2),rd=Math.min(.999,Math.hypot(x,y))||1e-4,rs=Math.sqrt(1-Math.pow(1-rd*rd,2));
-  x*=rs/rd;y*=rs/rd;S[g]=[957+350*x,471+350*y];Sz[g]=(rnd()<.5?-1:1)*Math.sqrt(Math.max(0,1-rs*rs));
-  let bx,by,bz;do{bx=rnd()*2-1;by=rnd()*2-1;bz=rnd()*2-1;}while(bx*bx+by*by+bz*bz>1);Bd[g]=rnd();g++;
- }
- const tab=[[29.03,0],[29.083,.035],[29.117,.078],[29.15,.134],[29.183,.204],[29.217,.29],[29.25,.385]];
- function prog(t){if(t<=tab[0][0])return 0;for(let i=1;i<tab.length;i++)if(t<=tab[i][0]){const[a,va]=tab[i-1],[b,vb]=tab[i],k=(t-a)/(b-a);return va+(vb-va)*(k*k*(3-2*k)*.5+k*.5);}return.385;}
+ const {G,grp,dup,S,Sz,Bd}=createParticleField(env);
  return (ctx,t)=>{
-  const k=prog(t),fade=clamp((t-28.86)/.15);ctx.save();ctx.fillStyle='#e9eaf2';
-  for(let i=0;i<N;i++){const j=grp[i];let x=lerp(G[i][0],S[j][0],k),y=lerp(G[i][1],S[j][1],k),a=.44*(.78+.22*Bd[j]);if(dup[i])x+=7*Math.min(1,k*2),y+=1.5;if(Sz[j]>0)a*=1-.2*k;ctx.globalAlpha=a*fade;ctx.beginPath();ctx.arc(x,y,1.4,0,Math.PI*2);ctx.fill();}
+  const k=sphereProgress(t),fade=clamp((t-28.86)/.15);ctx.save();ctx.fillStyle='#e9eaf2';
+  for(let i=0;i<N;i++){
+   const j=grp[i];let x=lerp(G[i*2],S[j*2],k),y=lerp(G[i*2+1],S[j*2+1],k),a=.44*(.78+.22*Bd[j]);
+   if(dup[i]){x+=7*Math.min(1,k*2);y+=1.5;}if(Sz[j]>0)a*=1-.2*k;
+   ctx.globalAlpha=a*fade;ctx.beginPath();ctx.arc(x,y,1.4,0,Math.PI*2);ctx.fill();
+  }
   ctx.restore();
  };
 }
-export function createArecibo(env){
- const particleField=makeParticleField(env);
- function glyphs(ctx,t,rep,ending=false){
+export function createArecibo(env,{particles=false}={}){
+ const particleField=particles?makeParticleField(env):null;
+ const pixelText=createPixelText();
+ // Recessed cells stay fixed. A bevel atlas shares each column's illumination across its rows.
+ const makeRecessed=rows=>{
+  const cv=document.createElement('canvas');cv.width=1663;cv.height=513;const c=cv.getContext('2d');
+  for(let j=0;j<23;j++)for(let i=0;i<73;i++)if(rows[j][i]==='.')offCell(c,3+P*i,3+P*j);
+  return cv;
+ };
+ const recessed=[makeRecessed(DATA.intro),makeRecessed(DATA.reprise)];
+ const atlas=document.createElement('canvas');atlas.width=32*73;atlas.height=32;const ac=atlas.getContext('2d');
+ function glyphs(ctx,t,rep,ending,palette){
   const fadeT=rep?205.6:28.383,front=wipeFront(t,rep);
   const wipe=t>=fadeT&&!ending,fade=xx=>clamp((xx-front)/WIPE_W+.5);
-  const draw=(s,x,y,p,color,alpha=1)=>bitmapText(ctx,s,x,y,p,color,alpha,Infinity,wipe?fade:null);
+  const draw=(s,x,y,p,color,alpha=1)=>pixelText(ctx,s,x,y,p,color,alpha,wipe?fade:null);
   if(!rep){
    draw('1 2 3 4 5 6 7 8 9 10',190,226,23/6,'#ebebf6');
    draw('world.execute(me);',190,824,23/6,'#ebecf4');
    // The two large labels fade as whole words once the dissolve reaches them.
-   if(t>=24.2163)bitmapText(ctx,'me',825.333,203.333,23/3,rgb(curve('me',t)),1-clamp((t-28.425)/.076));
-   if(t>=26.0663)bitmapText(ctx,'machine',1124.333,203.333,23/3,rgb(curve('machine',t)),1-clamp((t-28.4825)/.084));
+   if(t>=24.2163)pixelText(ctx,'me',825.333,203.333,23/3,rgb(palette.me),1-clamp((t-28.425)/.076));
+   if(t>=26.0663)pixelText(ctx,'machine',1124.333,203.333,23/3,rgb(palette.machine),1-clamp((t-28.4825)/.084));
   }else if(!ending){
    // Both lines are typed together at 34.5 characters per second.
    const n=Math.floor(Math.max(0,t-197.2547)*34.5);
@@ -138,23 +116,23 @@ export function createArecibo(env){
   }
   if((!rep&&t>=27.9)||(rep&&t>=205.6)||ending){
    const alpha=!rep?1-clamp((t-28.826)/.118):1;
-   bitmapText(ctx,'you',1561.333,203.333,23/3,!rep?rgb(curve('you',t)):ending?'#f7caad':'#ffe2c9',alpha);
+   pixelText(ctx,'you',1561.333,203.333,23/3,!rep?rgb(palette.you):ending?'#f7caad':'#ffe2c9',alpha);
   }
   if(!ending&&(!rep||t<205.95)){
-   const a=rep?1-clamp((t-205.8333)/.107):table(t,[[28.6,.982],[28.65,.539],[28.7,.077],[28.75,0]]);
-   bitmapText(ctx,'1679 = 23 x 73',1158.667,824,23/3,'#cac8e2',a);
+   const a=rep?1-clamp((t-205.8333)/.107):1-clamp((t-28.598)/.108);
+   pixelText(ctx,'1679 = 23 x 73',1158.667,824,23/3,'#cac8e2',a);
   }
   if(rep&&(ending||t>=205.81)){
-   const a=ending?1:clamp((t-205.8117)/.0567),col=ending?'#eff0fb':'#ffffff';bitmapText(ctx,'Execution',190,824,23/3,col,a);ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;for(let i=0;i<3;i++)ctx.fillRect(605+i*15.333333,863.333,6.44,6.44);ctx.restore();
+   const a=ending?1:clamp((t-205.8117)/.0567),col=ending?'#eff0fb':'#ffffff';pixelText(ctx,'Execution',190,824,23/3,col,a);ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;for(let i=0;i<3;i++)ctx.fillRect(605+i*15.333333,863.333,6.44,6.44);ctx.restore();
   }
  }
- function drawGrid(ctx,t,rep,ending=false,personRGB=null){
-  const rows=rep?DATA.reprise:DATA.intro,on=rep?DATA.repriseOn:DATA.introOn,pu=pulse(t),start=rep?193.6:22.3667;
-  const ageStart=Math.max(0,t-start),motion=motionAt(t,rep),unSize=motion[1];
+ function drawGrid(ctx,t,rep,ending,personRGB,motion,palette){
+  const rows=rep?DATA.reprise:DATA.intro,on=rep?DATA.repriseOn:DATA.introOn,start=rep?193.6:22.3667;
+  const ageStart=Math.max(0,t-start),unSize=motion.size;
   const onSize=19+(!rep?2*Math.pow(Math.max(0,1-ageStart/.13),2):0);
-  const unRGB=motion.slice(2,5);
+  const unRGB=motion.color;
   const dissolveT=sweep0(rep),dissolve=t>=dissolveT&&!ending;
-  const humanShrink=!rep&&t>=28.825,ss=humanShrink?table(t,SHRINK):1;
+  const humanShrink=!rep&&t>=28.825,ss=humanShrink?personScale(t):1;
   const mp=markerPos(t);
   ctx.save();
   if(!rep&&ageStart<.12){const g=Math.pow(1-ageStart/.12,1.1);ctx.fillStyle=rgb([14+13*g,15+15*g,22+23*g]);ctx.fillRect(694,273,1106,527);}
@@ -162,24 +140,36 @@ export function createArecibo(env){
    const age=t-(dissolveT+(X+P*i-131)/SWEEP_V);
    if(rows[j][i]!=='.'&&age>0)streak(ctx,X+P*i,Y+P*j,age,6,'rgba(218,217,243,1)',3.9);
   }
+  ctx.globalAlpha=1;
+  if(!(!rep&&t>=28.86)){
+   ctx.save();
+   if(!ending){
+    ctx.beginPath();
+    for(let i=0;i<73;i++)if(t+1e-5>=on[i])ctx.rect(X+P*i-4,Y-4,8,515);
+    ctx.clip();
+   }
+   ctx.drawImage(recessed[rep?1:0],X-3,Y-3);ctx.restore();
+  }
+  ac.clearRect(0,0,atlas.width,atlas.height);
+  if(!ending)for(let i=0;i<73;i++)if(t+1e-5<on[i]){
+   const x=X+P*i,shade=1-.08*Math.pow((x-960)/900,2);
+   beveledCell(ac,i*32+16,16,unSize,unRGB.map((v,k)=>lerp([14,15,22][k],v,shade)));
+  }
   for(let j=0;j<23;j++)for(let i=0;i<73;i++){
    const ch=rows[j][i],x=X+P*i,y=Y+P*j,active=t+1e-5>=on[i]||ending;
    if(ch==='P'&&humanShrink)continue;
-   if(!active){const shade=1-.08*Math.pow((x-960)/900,2);beveledCell(ctx,x,y,unSize,unRGB.map((v,k)=>lerp([14,15,22][k],v,shade)));continue;}
+   if(!active){ctx.drawImage(atlas,i*32,0,32,32,x-16,y-16,32,32);continue;}
    const has=ch!=='.';
-   if(!has){
-    if(!rep&&t>=28.86)continue;
-    offCell(ctx,x,y);continue;
-   }
+   if(!has)continue;
    let col=C[ch];
    // Number and binary baselines pulse into muted lavender between beats.
-   if((!rep&&(j===8||j===18)&&i<25)||(rep&&(j===9||j===20)&&i<26))col=mix(C.D,C.W,motion[5]);
+   if((!rep&&(j===8||j===18)&&i<25)||(rep&&(j===9||j===20)&&i<26))col=mix(C.D,C.W,motion.binary);
    // Pigment curves: the globe fades white -> lavender and pulses, the monitor and the
    // person flash when their labels land, and the person warms from white to skin tone.
-   if(!rep&&ch==='L'&&i<41)col=t<24.1999?C.W:curve('globe',t);
-   if(ch==='P')col=personRGB||(rep?(t<205.55?C.W:curve('rperson',t)):(t<27.8999?C.W:curve('person',t)));
-   if(rep&&ch==='L')col=heartPigment(t);
-   if(ch==='W'&&!rep&&i>=43)col=curve('comp',t);
+   if(!rep&&ch==='L'&&i<41)col=t<24.1999?C.W:palette.globe;
+   if(ch==='P')col=personRGB||((rep?t<205.55:t<27.8999)?C.W:palette.person);
+   if(rep&&ch==='L')col=palette.heart;
+   if(ch==='W'&&!rep&&i>=43)col=palette.comp;
    const fg=rep?(ch==='W'&&i<26?'rblk':ch==='W'&&i>=30&&i<56?'rheart':ch==='P'?'rperson':null):ch==='L'&&i<41?'globe':ch==='W'&&i>=43?'comp':ch==='P'?'person':null,fl=fg?flashAt(fg,t):0;
    const age=t-(dissolveT+(x-131)/SWEEP_V);
    if(dissolve&&age>0&&(rep?i<61:i<61)){
@@ -193,7 +183,7 @@ export function createArecibo(env){
   if(humanShrink){
    // The cells merge into one glowing solid silhouette as it shrinks, ending as a bright oval point.
    // (the collapsing figure is a more saturated peach than the resting cells)
-   const pc=rgb(mix(curve('person',t),[255,206,176],.45*clamp((1-ss)/.3))),q=19+4*clamp((1-ss)/.42),body=new Path2D();
+   const pc=rgb(mix(palette.person,[255,206,176],.45*clamp((1-ss)/.3))),q=19+4*clamp((1-ss)/.42),body=new Path2D();
    for(let j=0;j<23;j++)for(let i=61;i<70;i++)if(rows[j][i]==='P')body.rect(X+P*i-q/2,Y+P*j-q/2,q,q);
    // Small sizes close the one-cell gaps (arms merge with the body) like a low-resolution raster: a
    // fixed ~3 device-pixel rounded outline.
@@ -224,5 +214,8 @@ export function createArecibo(env){
    }
   }
  }
- return {draw(ctx,t,{reprise=false,ending=false,personRGB=null}={}){drawGrid(ctx,t,reprise,ending,personRGB);glyphs(ctx,t,reprise,ending);}};
+ return {draw(ctx,t,{reprise=false,ending=false,personRGB=null}={}){
+  const motion=messageMotion(t,reprise),palette=messagePalette(t,reprise,motion.energy);
+  drawGrid(ctx,t,reprise,ending,personRGB,motion,palette);glyphs(ctx,t,reprise,ending,palette);
+ }};
 }

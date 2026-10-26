@@ -1,15 +1,10 @@
-// 81.55-85.11  "If I'm a tabby cat / Then I will purr for your / Enjoyment"
-// Beige paper; a cat drawn as one continuous line and a handwritten lyric written on stroke by stroke.
-// The line and the lyric are polylines vectorised from the reference and drawn
-// with a pen dot; face, tabby marks and underline are procedural. Canvas 2D.
+// A seated tabby and cursive pen writing on warm paper.
 import { clamp, lerp, prog, ease } from './lib.js';
-import { TracedStrokes, loadStrokes } from './strokes.js';
-import { CAT_INK } from './precision_art.js';
-import { createCatTailMotion } from './cat-tail-motion.js';
+import { createCatDrawing } from './cat/drawing.js';
+import { createCatWriting } from './cat/handwriting.js';
 
 const T0 = 81.545, T1 = 85.11;
 const INK = '#16110f';
-const TEXT_INK = '#211c19';
 const TABBY = '#b17c45';
 
 // tapered orange marks: a -> b drawn on, bending through mid; [t0, dur, maxWidth]
@@ -143,28 +138,14 @@ export default {
   async create(root, env) {
     root.style.background = 'radial-gradient(ellipse 1104px 1080px at 960px 540px, #e3ded9 40%, #e1dcd7 58%, #dcd7d2 72.5%, #d6d1cc 87%, #d2cdc8 100%)';
     const { canvas, ctx } = env.canvas(root);
-    const [lineData, textData] = await Promise.all([loadStrokes('cat_line'), loadStrokes('cat_text')]);
-    const line = new TracedStrokes(lineData, { width: 3.1, color: INK, dotR: 3.6, dotHold: 0.018 });
-    const poseTail = createCatTailMotion(line.chains);
-    const text = new TracedStrokes(textData, { width: 3.0, color: TEXT_INK, dotR: 3.4, dotHold: 0.018 });
-    const lettering=CAT_INK.map(d=>new Path2D(d));
-    const tC=document.createElement('canvas');tC.width=1920;tC.height=1080;const tctx=tC.getContext('2d');
-    const textRows=[[100,550,870,663,82.80],[100,663,870,769,84.37],[100,770,870,970,85.0]];
+    const drawing = createCatDrawing();
+    const writing = createCatWriting();
 
     return {
       render(t) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        poseTail(t);
-        line.draw(ctx, t);
-        // The finished lettering is revealed through a wide mask of the traced pen path, so the ink keeps
-        // its shape when a row completes.
-        textRows.forEach(([x,y,X,Y,done],i)=>{
-          if(t>=done){ctx.save();ctx.beginPath();ctx.rect(x,y,X-x,Y-y);ctx.clip();ctx.fillStyle=TEXT_INK;ctx.translate(.5,.5);ctx.fill(lettering[i],'evenodd');ctx.restore();return;}
-          tctx.clearRect(x,y,X-x,Y-y);tctx.save();tctx.beginPath();tctx.rect(x,y,X-x,Y-y);tctx.clip();
-          text.draw(tctx,t,{width:10,color:'#fff'});
-          tctx.globalCompositeOperation='source-in';tctx.fillStyle=TEXT_INK;tctx.translate(.5,.5);tctx.fill(lettering[i],'evenodd');tctx.restore();
-          ctx.drawImage(tC,x,y,X-x,Y-y,x,y,X-x,Y-y);
-        });
+        drawing.draw(ctx, t);
+        writing.draw(ctx, t);
 
         // forehead M
         ctx.save();
@@ -172,7 +153,7 @@ export default {
         ctx.lineWidth = 3.3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        const km = prog(t, 82.666, 0.028); // the source draws the M within two frames
+        const km = prog(t, 82.666, 0.028);
         if (km > 0) polyPrefix(ctx, M_PTS, km);
         ctx.restore();
 
@@ -225,7 +206,7 @@ export default {
           if (k > 0) taper(ctx, mk.a, mk.m, mk.b, mk.w, k);
         }
 
-        // underline under "your"
+        // A warm red underline follows the second line.
         const ku = ease.outQuad(prog(t, 84.35, 0.067));
         if (ku > 0) {
           ctx.save();

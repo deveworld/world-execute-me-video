@@ -1,9 +1,8 @@
 // "Question me, question me, I can answer all LO-O-OVE" — an OMR answer sheet whose pencilled bubbles
 // form a heart; the sheet then fades away, a red-brown heart outline is drawn around the bubbles and
 // "Lo-o-ove" is hand-lettered in pencil.
-import { loadLoveFonts, clamp, prog, table, traceHeart, rng } from './lib.js';
-import { FILLS } from './omr/fills.js';
-import { HANDWRITING } from './omr/handwriting.js';
+import { loadLoveFonts, prog, traceHeart, rng } from './lib.js';
+import { drawHandwriting } from './omr/handwriting.js';
 
 const W = 1920, H = 1080;
 const LAV = 'rgb(150,142,228)';
@@ -20,13 +19,6 @@ const LYRIC = [
   ['I', 1200, 744, 182.888, 60], [' can', 1200 + 32.4, 744, 183.06, 60],
   [' answer', 1200 + 5 * 32.4, 744, 183.225, 110], [' all', 1200 + 12 * 32.4, 744, 183.56, 100],
 ];
-// Handwritten "Lo-o-ove": glyph ink boxes, revealed left to right.
-const HAND = [['L', 1201, 1271, 179], ['o', 1285, 1337, 137], ['-', 1359, 1400, 137], ['o', 1420, 1473, 137],
-  ['-', 1495, 1536, 137], ['o', 1556, 1609, 137], ['v', 1623, 1672, 137], ['e', 1680, 1729, 137]];
-const HAND_REVEAL = [[184.03, 1195], [184.05, 1222], [184.067, 1247], [184.083, 1271], [184.117, 1327], [184.133, 1337],
-  [184.167, 1375], [184.183, 1398], [184.217, 1442], [184.233, 1471], [184.283, 1520], [184.3, 1535], [184.333, 1592],
-  [184.35, 1609], [184.383, 1634], [184.4, 1672], [184.45, 1720], [184.467, 1732]];
-
 export default {
   id: 'love/omr',
   start: 181.042,
@@ -126,19 +118,20 @@ export default {
 
     // ---- question numbers, regular and bold: the rows of the heart turn bold in three
     // cascades on the lyric, before any pencil mark.
-    const BOLD_AT = [
-      [, , , 181.117, 181.133, 181.167, 181.633, 181.65, 181.683, 181.717, 181.75, 182.083, 182.1, 182.133, 182.167],
-      [, , , 181.117, 181.15, 181.167, 181.617, 181.65, 181.683, 181.717, 181.75, 182.083, 182.1, 182.133, 182.167, 182.2, 182.55, 182.567, 182.6],
-      [, , , 181.117, 181.133, 181.167, 181.617, 181.65, 181.7, 181.717, 181.75, 182.083, 182.1, 182.133, 182.167],
-    ];
+    const boldTime = (r, c) => {
+      if (r < 3 || r > (c === 1 ? 18 : 14)) return Infinity;
+      if (r < 6) return 181.117 + (r - 3) / 40;
+      if (r < 11) return 181.617 + (r - 6) / 30;
+      if (r < 16) return 182.083 + (r - 11) / 30;
+      return 182.55 + (r - 16) / 40;
+    };
     function numbers(t, alpha) {
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.textAlign = 'right';
       for (let c = 0; c < 3; c++) {
         for (let r = 1; r <= 20; r++) {
-          const t0 = BOLD_AT[c][r];
-          const bold = t0 !== undefined && t >= t0 - 0.008;
+          const bold = t >= boldTime(r, c) - .008;
           ctx.font = `${bold ? 700 : 400} 17px ${MONO}`;
           ctx.fillStyle = bold ? 'rgb(96,86,196)' : 'rgb(140,133,196)';
           ctx.fillText(String(r + 20 * c), 249 + 321 * c, BY(r) + 5);
@@ -200,12 +193,22 @@ export default {
     // ---- handwriting: monoline strokes, with the pencil grain applied once
     const [hwC, hw] = mk();
     {
-      hw.fillStyle='rgb(38,33,31)';hw.strokeStyle=hw.fillStyle;hw.lineWidth=.25;
-      const lettering=new Path2D(HANDWRITING);hw.fill(lettering,'evenodd');hw.stroke(lettering);
+      hw.strokeStyle = 'rgb(38,33,31)';
+      drawHandwriting(hw);
       const img = hw.getImageData(1150, 760, 640, 200);
       const G = rng(99);
       for (let i = 3; i < img.data.length; i += 4) img.data[i] = Math.round(img.data[i] * (0.55 + 0.45 * G()));
       hw.putImageData(img, 1150, 760);
+    }
+
+    // The implicit curve selects the bubbles; a moving pencil scans the rows.
+    const fills = [];
+    for (let r = 1; r <= 20; r++) for (let c = 0; c < 3; c++) for (let k = 0; k < 5; k++) {
+      const x = (BX(c, k) - 699.5) / 332, y = (570 - BY(r)) / 313;
+      if ((x * x + y * y - 1) ** 3 - x * x * y ** 3 > 0) continue;
+      const i = fills.length;
+      const t0 = Math.max(183.033, 182.981 + i / 120.5 + .018 * Math.sin(i * Math.PI / 7 + .75));
+      fills.push([r, c, k, t0]);
     }
 
     function lyric(t) {
@@ -233,23 +236,21 @@ export default {
           ctx.globalAlpha = 1;
         }
         // pencil fills
-        FILLS.forEach(([r, c, k, t0], i) => {
+        fills.forEach(([r, c, k, t0], i) => {
           // Pencil progress: the stripes start a frame before t0, the graphite fills in from t0+2 frames
           // and the stripes keep showing through the final fill. The dark stripes are drawn in by the
           // pencil (left to right), then graphite covers them part-way so the stripe texture stays visible.
           const n = (t - t0) * 60;
           if (n <= -1.6) return;
           const x = BX(c, k) - 20, y = BY(r) - 20;
-          const sw = table([[-1.6, 0], [-1, .22], [0, .6], [1, .82], [2, 1]], n);
+          const sw = 1 - (1 - prog(n, -1.6, 3.6)) ** 1.5;
           if (sw > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x + 3, y, 34 * sw, 40); ctx.clip(); ctx.globalAlpha = 1; ctx.drawImage(stripeTex, x, y); ctx.restore(); }
-          const fa = table([[1, 0], [2, .05], [3, .42], [4, .65]], n);
+          const u = prog(n, 1.65, 2.35), fa = .65 * u * u * (3 - 2 * u);
           if (fa > 0) { ctx.globalAlpha = fa; ctx.drawImage(fillTex[i % fillTex.length], x, y); }
         });
         ctx.globalAlpha = 1;
         // heart outline drawn up both sides from the tip
-        const hp = table([[184.338, 0], [184.35, 0.111], [184.367, 0.259], [184.383, 0.397], [184.4, 0.515], [184.417, 0.615],
-          [184.433, 0.699], [184.45, 0.767], [184.467, 0.821], [184.483, 0.864], [184.5, 0.899], [184.517, 0.927],
-          [184.533, 0.951], [184.55, 0.967], [184.567, 0.983], [184.583, 0.991], [184.6, 1]], t);
+        const hp = 1 - (1 - prog(t, 184.338, .262)) ** 2.65;
         if (hp > 0) {
           ctx.save();
           ctx.strokeStyle = 'rgb(176,92,52)';
@@ -263,8 +264,8 @@ export default {
         }
         lyric(t);
         // handwriting reveal
-        const hx = table(HAND_REVEAL, t);
-        if (t >= HAND_REVEAL[0][0]) {
+        const hx = 1197 + 535 * prog(t, 184.033, .434);
+        if (t >= 184.033) {
           ctx.save();
           ctx.beginPath();
           ctx.rect(1150, 760, hx - 1150, 200);

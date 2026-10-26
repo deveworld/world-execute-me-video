@@ -6,32 +6,12 @@
 import { clamp, lerp, prog, ease, marker } from './draw.js';
 import { el } from './text.js';
 import { SERIF, MONO } from './const.js';
-import { SPHERE_POINTS } from './sphere-points.js';
+import { createParticleField, sphereProgress, N, NT } from './particles.js';
 
 const T0 = 29.2, T1 = 33.7;
-const COLS = 73, ROWS = 23, N = COLS * ROWS;
-const SPH = { x: 959.5, y: 469.5, r: 352 };
-const BALL = { x: 959.5, y: 643, rx: 280, ry: 237 };
 const CUBE = { x: 959.5, y: 649.5, h: 150, F: 1500 };
 const POSE1 = { yaw: 0.72, pitch: -0.4 };
 const POSE2 = { yaw: Math.PI / 4, pitch: -Math.atan(1 / Math.SQRT2), roll: -Math.PI / 6 }; // corner-on
-
-// grid → sphere progress (x-extent of the field, 29.05 → 29.72)
-const P1 = [[29.03, 0], [29.083, 0.035], [29.117, 0.078], [29.15, 0.134], [29.183, 0.204], [29.217, 0.29],
-  [29.25, 0.385], [29.283, 0.494], [29.317, 0.606], [29.35, 0.70], [29.383, 0.767], [29.417, 0.83],
-  [29.45, 0.874], [29.483, 0.908], [29.517, 0.936], [29.55, 0.958], [29.583, 0.972], [29.617, 0.986],
-  [29.65, 0.993], [29.683, 0.998], [29.73, 1]];
-function table(tab, t) {
-  if (t <= tab[0][0]) return tab[0][1];
-  for (let i = 1; i < tab.length; i++) {
-    if (t <= tab[i][0]) {
-      const [a, va] = tab[i - 1], [b, vb] = tab[i];
-      const k = (t - a) / (b - a);
-      return va + (vb - va) * k * k * (3 - 2 * k) * 0.5 + (vb - va) * k * 0.5;
-    }
-  }
-  return tab[tab.length - 1][1];
-}
 
 function rot3(yaw, pitch, roll) {
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
@@ -45,66 +25,8 @@ function rot3(yaw, pitch, roll) {
 }
 
 export function createPoints({ root, env }) {
-  const rnd = env.rng(20240629);
-  // ---------- dots ----------
-  // 1679 grid dots → 1000 targets: 679 dots pair up with their right-hand neighbour and merge
-  // into it on the way to the sphere (the pairs close up around 29.4 s).
-  const NT = 1000;
-  const G = new Float32Array(N * 2), grp = new Int32Array(N), dup = new Uint8Array(N);
-  const S = new Float32Array(NT * 2), Sz = new Float32Array(NT), B = new Float32Array(NT * 2);
-  const Ls = new Float32Array(NT), Lp = new Float32Array(NT), Bd = new Float32Array(NT);
-  const sourceAlpha = new Float32Array(NT);
-  const departure = new Float32Array(NT);
-  const pairStart = new Uint8Array(N);
-  let pairs = 0;
-  const cand = [];
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS - 1; c += 2) cand.push(r * COLS + c);
-  for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cand[i], cand[j]] = [cand[j], cand[i]]; }
-  for (const i of cand) { if (pairs >= N - NT) break; pairStart[i] = 1; pairs++; }
-  let g = 0;
-  for (let i = 0; i < N; i++) {
-    const r = Math.floor(i / COLS), c = i % COLS;
-    G[i * 2] = 961.5 + (c - 36) * 23.1;
-    G[i * 2 + 1] = 535.5 + (r - 11) * 22.8;
-    if (c > 0 && pairStart[i - 1] && !dup[i - 1]) { grp[i] = grp[i - 1]; dup[i] = 1; continue; }
-    grp[i] = g;
-    // target on the sphere: rectangle → disk (elliptical grid map) + jitter, re-spread radially
-    // so the projected density is that of a sphere surface (rim-heavy)
-    let u = (c + (pairStart[i] ? 0.5 : 0) - 36) / 36.5 + (rnd() - 0.5) * 0.05, v = (r - 11) / 11.5 + (rnd() - 0.5) * 0.12;
-    u = clamp(u, -1, 1); v = clamp(v, -1, 1);
-    let x = u * Math.sqrt(1 - (v * v) / 2), y = v * Math.sqrt(1 - (u * u) / 2);
-    const rd = Math.min(0.999, Math.hypot(x, y)) || 1e-4;
-    const rs = Math.sqrt(1 - Math.pow(1 - rd * rd, 2));
-    x *= rs / rd; y *= rs / rd;
-    S[g * 2] = SPH.x + SPH.r * x;
-    S[g * 2 + 1] = SPH.y + SPH.r * y;
-    Sz[g] = (rnd() < 0.5 ? -1 : 1) * Math.sqrt(Math.max(0, 1 - rs * rs));
-    // ball: an independent uniform point (so the shell fills in as it shrinks)
-    let bx, by, bz;
-    do { bx = rnd() * 2 - 1; by = rnd() * 2 - 1; bz = rnd() * 2 - 1; } while (bx * bx + by * by + bz * bz > 1);
-    B[g * 2] = BALL.x + BALL.rx * bx;
-    B[g * 2 + 1] = BALL.y + BALL.ry * by;
-    Bd[g] = rnd();
-    g++;
-  }
-  // Map the dots onto SPHERE_POINTS, keeping the grid's local ordering: nearest available pairs are
-  // assigned globally, once in create().
-  const pairsByDistance = new Float64Array(NT * NT);
-  for (let i = 0; i < NT; i++) for (let j = 0; j < NT; j++) {
-    const dx = S[i * 2] - SPHERE_POINTS[j][0], dy = S[i * 2 + 1] - SPHERE_POINTS[j][1];
-    pairsByDistance[i * NT + j] = Math.round((dx * dx + dy * dy) * 100) * (NT * NT) + i * NT + j;
-  }
-  pairsByDistance.sort();
-  const usedSource = new Uint8Array(NT), usedTarget = new Uint8Array(NT);
-  let assigned = 0;
-  for (const encoded of pairsByDistance) {
-    const pair = encoded % (NT * NT), i = Math.floor(pair / NT), j = pair % NT;
-    if (usedSource[i] || usedTarget[j]) continue;
-    usedSource[i] = usedTarget[j] = 1;
-    S[i * 2] = SPHERE_POINTS[j][0]; S[i * 2 + 1] = SPHERE_POINTS[j][1]; sourceAlpha[i] = SPHERE_POINTS[j][2];
-    departure[i] = SPHERE_POINTS[j][3];
-    if (++assigned === NT) break;
-  }
+  const { G, grp, dup, S, B, Bd, sourceAlpha, departure, rnd } = createParticleField(env);
+  const Ls = new Float32Array(NT), Lp = new Float32Array(NT);
   const order = [];
   for (let k = 0; k < NT; k++) order.push([B[k * 2] + (rnd() - 0.5) * 60, k]);
   order.sort((a, b) => a[0] - b[0]);
@@ -175,7 +97,7 @@ export function createPoints({ root, env }) {
 
   function drawDots(ctx, t) {
     if (t > 31.1) return;
-    const p1 = table(P1, t);
+    const p1 = sphereProgress(t);
     const L = 148.5 * lineLen(t), a = lineAng(t), ca = Math.cos(a), sa = Math.sin(a);
     const bright = lerp(0.44, 0.82, prog(t, 29.48, 0.25)) - 0.16 * prog(t, 29.95, 0.45);
     const rad = 1.4 - 0.15 * prog(t, 29.35, 0.35) + 0.3 * prog(t, 29.95, 0.45);

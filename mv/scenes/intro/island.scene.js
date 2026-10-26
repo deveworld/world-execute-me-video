@@ -1,8 +1,8 @@
-// "Set up our new world / And let's begin the SIMULATION" (11.13–14.98).
 // Isometric voxel island on a lavender backdrop: build waves (two diagonals every ~7 frames), water,
 // decorations and a wireframe scan. Lyrics are DOM text in Nabla (colour font) so the extrusion axis
 // (EDPT) can be animated.
 import { clamp, lerp, ease, rgb } from './lib/util.js';
+import { createCloudPaths, walkerAt } from './lib/island-motion.js';
 
 const FPS = 60;
 // ---------------------------------------------------------------- projection
@@ -12,8 +12,7 @@ const SY = (x, y, z) => TOPY + AY * (x + y) - HZ * z;
 const WATER_Z = 0.5;
 
 // ---------------------------------------------------------------- terrain
-// H[gy][gx] as of 12.18 s (before the water and the decorations); cell (1,4) is 1 high
-// (it is only visible during the first build wave, frames 678-683).
+// The height map defines the stepped terrain before the two tower blocks are added.
 const H = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   [0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
@@ -47,16 +46,10 @@ const TREES = [
   [6, 7, 12.92], [10, 9, 12.92],
 ];
 const HOUSE = { gx: 7, gy: 6, f0: 760 };
-const PEOPLE_TRACKS = [ // feet positions (screen px) every 2 source frames from the first frame; held afterwards
-[778,[[1098,440],[1098,448],[1098,448],[1098,448],[1098,448],[1098,448],[1103,443],[1108,439],[1127,448],[1134,457],[1136,466],[1136,466],[1136,464],[1138,458],[1148,458],[1166,468],[1173,477],[1174,485],[1174,485],[1174,483],[1171,476],[1161,478],[1143,488],[1137,496],[1136,504],[1136,504],[1136,501],[1139,495],[1150,497],[1168,507],[1173,516],[1174,523],[1174,523],[1174,523],[1174,523]]],
-[776,[[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,447],[1402,442],[1397,438],[1381,443],[1368,453],[1364,462],[1364,466],[1364,466],[1363,460],[1358,457],[1342,463],[1329,473],[1326,481],[1326,485],[1326,485],[1325,478],[1320,469],[1302,459],[1291,453],[1288,454],[1288,453],[1288,453],[1287,454],[1280,452],[1262,465],[1255,471],[1255,471]]],
-[776,[[1516,512],[1516,512],[1516,512],[1516,512],[1516,512],[1516,512],[1516,511],[1514,504],[1506,504],[1487,513],[1480,522],[1478,531],[1478,531],[1478,529],[1476,523],[1466,523],[1448,533],[1441,542],[1440,550],[1440,550],[1440,548],[1438,541],[1427,543],[1409,553],[1403,561],[1402,569],[1402,569],[1402,566],[1399,560],[1388,562],[1370,572],[1365,581],[1364,588],[1364,588],[1364,588],[1364,588]]],
-];
-const PEOPLE = [ // cell path (gx, gy) keyframes and appear time
-  { t0: 12.6, path: [[12.6, 5.3, 6.4], [14.98, 5.9, 6.1]] },
-  { t0: 12.62, path: [[12.6, 8.2, 4.4], [14.98, 7.7, 4.9]] },
-  { t0: 12.85, path: [[12.85, 4.6, 7.5], [14.98, 4.3, 8.2]] },
-  { t0: 12.95, path: [[12.95, 8.6, 6.3], [14.98, 8.9, 7.4]] },
+const WALKERS = [
+  { appear: 778 / FPS, hop: 788 / FPS, path: [[1098,448],[1136,466],[1174,485],[1136,504],[1174,523]] },
+  { appear: 776 / FPS, hop: 794 / FPS, path: [[1402,447],[1364,466],[1326,485],[1288,454],[1255,471]] },
+  { appear: 776 / FPS, hop: 788 / FPS, path: [[1516,512],[1478,531],[1440,550],[1402,569],[1364,588]] },
 ];
 const CLOUDS = [
   { x0: 1249, y0: 221, w: 126, t0: 13.17 },
@@ -78,16 +71,15 @@ const WORDS = [
 ];
 const EDPT = 120;
 
-// scan line: y = 222 at frame 844, +39.64 px per frame, last drawn at frame 858
+// The horizontal scan moves down at a constant speed.
 const SCAN_F0 = 844, SCAN_F1 = 858;
 const scanY = (t) => 222 + (t * FPS - SCAN_F0) * 39.64;
 
 // ---------------------------------------------------------------- colours
 const C = {
-  top: [245, 245, 245], left: [218, 220, 249], right: [180, 184, 247], edge: 'rgba(130,132,184,0.38)',
+  top: [245, 245, 245], left: [218, 220, 249], right: [180, 184, 247],
   deep: [129, 130, 230], shallow: [160, 162, 235], side: [74, 75, 215],
   gridIn: 'rgb(166,168,191)', gridOut: 'rgb(92,94,117)',
-  tree: [62, 60, 190], treeDark: [38, 36, 140],
   wireGrey: 'rgb(78,80,104)', wireBlue: 'rgb(72,72,150)', wireHouse: 'rgb(200,90,50)',
 };
 
@@ -112,9 +104,7 @@ export default {
       b.fillRect(0, 0, W, HH);
     }
 
-    const detail=await env.loadJSON('/scenes/intro/lib/island-detail.json');
-    // Smooth the control polygon before constructing the cloud surface.
-    detail.clouds=detail.clouds.map(points=>{for(let k=0;k<2;k++){const q=[];points.forEach((p,i)=>{const n=points[(i+1)%points.length];q.push([.75*p[0]+.25*n[0],.75*p[1]+.25*n[1]],[.25*p[0]+.75*n[0],.25*p[1]+.75*n[1]]);});points=q;}return points;});
+    const cloudPaths = createCloudPaths();
     const wireFill=ctx.createPattern(bg,'no-repeat');
 
     // ---------------------------------------------------------- lyric DOM
@@ -152,7 +142,7 @@ export default {
       right: (x, y, z0, z1) => [SX(x + 1, y), SY(x + 1, y, z0), SX(x + 1, y + 1), SY(x + 1, y + 1, z0), SX(x + 1, y + 1), SY(x + 1, y + 1, z1), SX(x + 1, y), SY(x + 1, y, z1)],
     };
 
-    // mode: 'solid' | 'wire'. In solid mode the source outlines the island's silhouette and convex edges in
+    // mode: 'solid' | 'wire'. In solid mode the island's silhouette and convex edges are outlined in
     // dark grey while edges between continuing faces stay faint, so edges are classified per neighbour height.
     let curT = 0;
     const hVis = (x, y) => {
@@ -285,7 +275,7 @@ export default {
       const cxp = x1 - 0.12, cyp = ym - 0.05;
       shape([P(cxp, cyp + 0.1, z1 + 0.25), P(cxp + 0.1, cyp + 0.1, z1 + 0.25), P(cxp + 0.1, cyp + 0.1, zr + 0.18), P(cxp, cyp + 0.1, zr + 0.18)], [236, 180, 150]);
       if (mode !== 'wire') {
-        // door on the long (screen-left) wall, window on the gable wall, as in the source
+        // Door on the long wall and a window on the gable wall.
         const d0 = y0 + 0.24, d1 = y0 + 0.38;
         shape([P(x1, d0, z0), P(x1, d1, z0), P(x1, d1, z0 + 0.36), P(x1, d0, z0 + 0.36)], [30, 22, 26]);
         const xm = (x0 + x1) / 2;
@@ -293,7 +283,6 @@ export default {
       }
     }
 
-    function person(gx, gy, z, t, phase, mode, lineColor) { personAt(SX(gx, gy), SY(gx, gy, z), mode, lineColor); }
     function personAt(x, y, mode, lineColor) {
       ctx.save();
       if (mode === 'wire') {
@@ -312,7 +301,9 @@ export default {
     }
 
     function cloudShape(cx, cy, w, dz) {
-      const pts=detail.clouds[w>115?0:1];ctx.beginPath();pts.forEach(([x,y],i)=>{const xx=cx+x,yy=cy+y+dz;i?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy);});ctx.closePath();
+      ctx.beginPath();
+      cloudPaths[w > 115 ? 0 : 1].forEach(([x,y],i) => i ? ctx.lineTo(cx+x,cy+y+dz) : ctx.moveTo(cx+x,cy+y+dz));
+      ctx.closePath();
     }
     function cloud(c, t, mode, lineColor) {
       const k = clamp((t - c.t0) / 0.18);
@@ -379,7 +370,7 @@ export default {
     function drawGrid(t, alpha) {
       if (alpha <= 0) return;
       const f = t * FPS;
-      // quadrants: one closed cell per corner (frames 668..671), then open grids whose lines all
+      // Quadrants start with one closed cell per corner, then open grids whose lines all
       // extend to a common length L that eases 1 -> 6 cells
       const fr = Math.round(f);
       const L = fr <= 671 ? 1 : 1 + 5 * (1 - Math.exp(-(fr - 671) / 2.24));
@@ -485,13 +476,9 @@ export default {
           if (gx === HOUSE.gx && gy === HOUSE.gy) house(t, mode, lineColor);
         }
       }
-      // people stand on top faces; draw after terrain (they are tiny)
-      // three walkers hop cell to cell on the source's 1/8-beat rhythm
-      for (const [f0, pts] of PEOPLE_TRACKS) {
-        const u = (t * FPS - f0) / 2;
-        if (u < -0.25) continue;
-        const i = clamp(Math.floor(u), 0, pts.length - 1), j = Math.min(pts.length - 1, i + 1), k = clamp(u - i);
-        personAt(lerp(pts[i][0], pts[j][0], k), lerp(pts[i][1], pts[j][1], k), mode, lineColor);
+      for (const walker of WALKERS) {
+        const p = walkerAt(walker, t);
+        if (p) personAt(p[0], p[1], mode, lineColor);
       }
       drawSlabSides(water, mode, lineColor);
       if (mode !== 'wire') for (const c of CLOUDS) cloudShadow(c, t);

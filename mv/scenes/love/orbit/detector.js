@@ -1,2 +1,62 @@
-// Calorimeter materials and fitted circular particle trajectories.
-export const DETECTOR = {"cells":[{"inner":[6,5,10],"outer":[8,7,12],"bar":[23,22,52]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[24,23,51]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[25,22,48]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[26,23,56]},{"inner":[6,5,10],"outer":[17,16,25],"bar":[25,22,51]},{"inner":[8,7,12],"outer":[16,14,27],"bar":[25,25,50]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[24,22,47]},{"inner":[8,7,12],"outer":[17,15,26],"bar":[22,22,50]},{"inner":[6,5,10],"outer":[18,16,28],"bar":[22,24,56]},{"inner":[26,25,34],"outer":[30,30,56],"bar":[130,124,213]},{"inner":[84,84,100],"outer":[46,46,84],"bar":[217,219,255],"height":285,"ramp":[[148,145,246],[246,247,255],[246,247,255]]},{"inner":[37,35,47],"outer":[37,37,67],"bar":[147,143,231]},{"inner":[36,35,44],"outer":[29,28,55],"bar":[147,143,225]},{"inner":[8,7,12],"outer":[17,15,27],"bar":[25,24,53]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[22,21,53]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[24,23,51]},{"inner":[6,5,10],"outer":[15,13,25],"bar":[26,23,45]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[22,22,44]},{"inner":[8,7,12],"outer":[15,13,25],"bar":[22,24,51]},{"inner":[6,5,10],"outer":[15,14,23],"bar":[23,22,50]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[25,23,52]},{"inner":[6,5,10],"outer":[9,8,13],"bar":[25,23,54]},{"inner":[38,37,48],"outer":[40,41,77],"bar":[141,140,236]},{"inner":[143,142,179],"outer":[104,102,192],"bar":[223,227,251],"height":344,"ramp":[[228,231,251],[149,150,255],[139,141,223]]},{"inner":[169,167,204],"outer":[112,112,205],"bar":[224,226,252],"height":356,"ramp":[[231,234,254],[150,151,255],[143,144,237]]},{"inner":[90,88,111],"outer":[61,61,116],"bar":[221,225,255],"height":301,"ramp":[[218,221,255],[143,147,246],[234,236,255]]},{"inner":[25,24,32],"outer":[26,24,45],"bar":[100,96,135]},{"inner":[6,5,12],"outer":[20,18,33],"bar":[30,27,60]},{"inner":[8,7,12],"outer":[16,14,25],"bar":[24,21,51]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[24,23,49]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[25,22,49]},{"inner":[18,17,23],"outer":[15,15,27],"bar":[27,25,62]},{"inner":[110,75,59],"outer":[78,55,71],"bar":[84,61,88]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[24,21,47]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[24,22,49]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[22,21,48]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[23,22,48]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[23,22,50]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[25,22,50]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[24,22,51]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[26,23,52]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[22,21,50]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[22,20,51]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[26,24,52]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[24,21,45]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[21,23,56]},{"inner":[17,16,21],"outer":[8,7,12],"bar":[25,22,58]},{"inner":[72,70,88],"outer":[15,15,27],"bar":[213,214,250]},{"inner":[22,21,30],"outer":[18,18,34],"bar":[31,30,61]},{"inner":[8,7,12],"outer":[15,14,25],"bar":[23,22,56]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[27,24,52]},{"inner":[8,7,12],"outer":[18,18,32],"bar":[25,24,62]},{"inner":[26,25,33],"outer":[27,27,50],"bar":[128,126,187]},{"inner":[78,76,94],"outer":[55,54,104],"bar":[218,220,254],"height":293,"ramp":[[148,149,249],[143,144,244],[198,201,255]]},{"inner":[211,213,248],"outer":[110,114,205],"bar":[222,226,254],"height":369,"ramp":[[226,231,251],[220,228,255],[148,150,239]]},{"inner":[106,106,133],"outer":[132,136,236],"bar":[222,226,251],"height":338,"ramp":[[223,227,252],[146,150,252],[221,226,255]]},{"inner":[36,37,48],"outer":[55,55,105],"bar":[140,141,240],"height":283,"ramp":[[195,196,251],[195,196,251],[195,196,251]]},{"inner":[9,8,13],"outer":[20,20,36],"bar":[23,27,68]},{"inner":[6,5,10],"outer":[17,17,31],"bar":[22,22,58]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[21,20,47]},{"inner":[8,7,12],"outer":[16,14,26],"bar":[23,21,51]},{"inner":[8,7,12],"outer":[8,7,12],"bar":[22,21,52]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[21,20,50]},{"inner":[6,5,10],"outer":[8,7,12],"bar":[22,22,49]}],"tracks":[{"angle":2.3736478,"curvature":-0.0005,"score":1.0},{"angle":5.3188909,"curvature":0.0009,"score":1.0},{"angle":2.5176374,"curvature":-0.0016,"score":1.0},{"angle":3.2026792,"curvature":-0.0002,"score":1.0},{"angle":1.0297443,"curvature":0.0005,"score":0.9999},{"angle":5.1923545,"curvature":0.0011,"score":0.9997},{"angle":5.5065138,"curvature":0.0009,"score":0.9975},{"angle":2.5743606,"curvature":0.006,"score":0.9968},{"angle":5.414884,"curvature":0.0007,"score":0.9998},{"angle":2.1729349,"curvature":-0.0035,"score":0.9827},{"angle":2.2776547,"curvature":0.0004,"score":0.9848},{"angle":0.1134464,"curvature":0.0031,"score":0.9743},{"angle":1.0864675,"curvature":0.0009,"score":0.9839},{"angle":2.443461,"curvature":-0.001,"score":0.9999},{"angle":1.3526302,"curvature":0.0061,"score":0.9458},{"angle":5.253441,"curvature":0.0011,"score":0.9893},{"angle":0.9642944,"curvature":0.001,"score":0.9775},{"angle":2.578724,"curvature":-0.0021,"score":0.9555},{"angle":3.4862952,"curvature":0.0098,"score":0.8846},{"angle":3.4950218,"curvature":-0.0084,"score":0.941},{"angle":5.3756141,"curvature":0.0006,"score":0.9998},{"angle":5.4497906,"curvature":0.005,"score":0.9617},{"angle":5.2010812,"curvature":-0.0013,"score":0.9286},{"angle":0.0174533,"curvature":-0.0099,"score":0.9147},{"angle":0.2399828,"curvature":-0.0026,"score":0.96},{"angle":2.7358036,"curvature":0.004,"score":0.9351},{"angle":1.4355333,"curvature":-0.0081,"score":0.9367},{"angle":2.4260077,"curvature":0.0042,"score":0.9766},{"angle":4.5858526,"curvature":0.009,"score":0.8967},{"angle":1.6318829,"curvature":-0.0073,"score":0.9059},{"angle":0.7330383,"curvature":0.0061,"score":0.9293},{"angle":6.0170226,"curvature":-0.0097,"score":0.9133},{"angle":6.0606558,"curvature":0.0002,"score":0.7243},{"angle":1.850049,"curvature":0.0098,"score":0.9257},{"angle":5.2447144,"curvature":-0.0014,"score":0.9452},{"angle":2.4958208,"curvature":-0.0055,"score":0.9689},{"angle":5.3843407,"curvature":0.0035,"score":0.9306},{"angle":2.417281,"curvature":0.0025,"score":0.9783},{"angle":5.2141711,"curvature":0.0013,"score":0.9793},{"angle":2.4783675,"curvature":-0.0042,"score":0.9751},{"angle":3.3379422,"curvature":-0.0064,"score":0.9223},{"angle":5.279621,"curvature":0.0011,"score":0.9953},{"angle":1.1955505,"curvature":-0.0052,"score":0.9418},{"angle":2.5089108,"curvature":-0.0002,"score":0.8967},{"angle":1.0733775,"curvature":0.0002,"score":0.8791},{"angle":2.120575,"curvature":0.0039,"score":0.8738},{"angle":5.2883476,"curvature":0.0052,"score":0.9484},{"angle":2.5743606,"curvature":-0.0073,"score":0.9396},{"angle":5.3668874,"curvature":0.0059,"score":0.9804},{"angle":5.401794,"curvature":0.0005,"score":0.9633},{"angle":4.8694686,"curvature":0.0059,"score":0.7567},{"angle":2.3343779,"curvature":0.0054,"score":0.9632},{"angle":5.3188909,"curvature":0.0026,"score":0.9571},{"angle":2.2776547,"curvature":0.0001,"score":0.8437},{"angle":1.1301007,"curvature":-0.0021,"score":0.9824},{"angle":1.0428342,"curvature":0.0021,"score":0.9598},{"angle":5.4497906,"curvature":0.0022,"score":0.9779},{"angle":2.3038346,"curvature":0.0036,"score":0.9534},{"angle":5.8119464,"curvature":-0.0072,"score":0.7714},{"angle":5.0047316,"curvature":0.004,"score":0.8389},{"angle":2.0158553,"curvature":0.0059,"score":0.7393},{"angle":1.0733775,"curvature":-0.0009,"score":0.9935},{"angle":5.8730329,"curvature":-0.0066,"score":0.6629},{"angle":0.9468411,"curvature":0.0023,"score":0.9761},{"angle":2.6136306,"curvature":-0.0049,"score":0.7346},{"angle":2.7532569,"curvature":-0.0042,"score":0.7263},{"angle":1.2348204,"curvature":-0.0023,"score":0.7843},{"angle":1.9504054,"curvature":0.0052,"score":0.6245},{"angle":5.2708943,"curvature":0.0051,"score":0.928},{"angle":2.2078415,"curvature":0.0042,"score":0.7359},{"angle":5.5108771,"curvature":-0.0055,"score":0.9631},{"angle":2.700897,"curvature":-0.0049,"score":0.8368},{"angle":5.4497906,"curvature":-0.0034,"score":0.9785},{"angle":5.71159,"curvature":-0.0057,"score":0.7807},{"angle":2.6354472,"curvature":-0.0048,"score":0.7685}],"loops":[{"x":-121.0,"y":233.0,"radius":262.545,"score":0.621},{"x":169.0,"y":-135.0,"radius":216.301,"score":0.6271},{"x":199.0,"y":-105.0,"radius":225.002,"score":0.6494},{"x":19.0,"y":247.0,"radius":247.73,"score":0.6218},{"x":168.0,"y":92.0,"radius":191.541,"score":0.8176},{"x":105.0,"y":148.0,"radius":181.463,"score":0.7288},{"x":-31.0,"y":166.0,"radius":168.87,"score":0.7371},{"x":52.0,"y":125.0,"radius":135.385,"score":0.7579},{"x":135.0,"y":128.0,"radius":186.035,"score":0.6779},{"x":-132.0,"y":-67.0,"radius":148.03,"score":0.8197},{"x":28.0,"y":142.0,"radius":144.734,"score":0.8068},{"x":5.0,"y":116.0,"radius":116.108,"score":0.7136},{"x":53.0,"y":-22.0,"radius":57.385,"score":0.682},{"x":-126.0,"y":-38.0,"radius":131.605,"score":0.751},{"x":174.0,"y":103.0,"radius":202.2,"score":0.834},{"x":-154.0,"y":-93.0,"radius":179.903,"score":0.8466},{"x":-31.0,"y":11.0,"radius":32.894,"score":0.7442},{"x":-171.0,"y":-105.0,"radius":200.664,"score":0.8611},{"x":50.0,"y":-3.0,"radius":50.09,"score":0.6558},{"x":45.0,"y":-12.0,"radius":46.573,"score":0.633}]};
+import { rng, clamp, lerp } from '../lib.js';
+
+const D = Math.PI / 180;
+const gaussian = (x, c, s) => Math.exp(-.5 * ((x - c) / s) ** 2);
+export const JET_AXES = [[61.5, 7], [137, 11], [308.5, 17]];
+
+// Angular shower profiles combine a broad cone with fine subjets. The outer part
+// scatters more strongly, leaving bright ribs between the charged-particle tracks.
+export function jetEnergy(deg, radius) {
+  const outer = clamp((radius - 55) / 60);
+  let light = 0;
+  for (let j = 0; j < JET_AXES.length; j++) {
+    const [axis, width] = JET_AXES[j], d = deg - axis;
+    if (Math.abs(d) > width * 1.6) continue;
+    const envelope = Math.exp(-Math.pow(Math.abs(d) / (width * .72), 4));
+    const ribs = .50 + .24 * Math.sin(d * 1.7 + j) ** 2 + .26 * Math.sin(d * 3.6 - j * 2) ** 2;
+    const inner = 218 * envelope * (.93 + .07 * Math.cos(d * .9));
+    const far = 220 * envelope * ribs * (j === 0 ? .76 : 1);
+    light = Math.max(light, lerp(inner, far, outer * outer * (3 - 2 * outer)));
+  }
+  return light;
+}
+
+export function inJet(angle) {
+  const deg = (angle / D + 360) % 360;
+  return JET_AXES.some(([axis, width]) => Math.abs(deg - axis) < width * 1.5);
+}
+
+export function makeDetector() {
+  const random = rng(34001);
+  const normal = () => Math.sqrt(-2 * Math.log(Math.max(.0001, random()))) * Math.cos(2 * Math.PI * random());
+  // Sparse energy deposits drive tower heights; the material response supplies colour.
+  const deposits = [[10, 5], [23, 64], [24, 76], [25, 21], [53, 13], [54, 89], [55, 58], [56, 3]];
+  const cells = Array.from({ length: 64 }, (_, i) => {
+    const angle = (i + .5) * 360 / 64;
+    const e = Math.max(.37 * gaussian(angle, 59, 4.4), .81 * gaussian(angle, 136, 6.2), gaussian(angle, 306.5, 4.8));
+    const outer = Math.max(.34 * gaussian(angle, 59, 4.8), .82 * gaussian(angle, 137, 6.5), gaussian(angle, 311, 6.3));
+    const band = Math.max(.67 * gaussian(angle, 60, 7.2), gaussian(angle, 137, 7.4), gaussian(angle, 309, 7.9));
+    const base = i % 3 === 0 ? 6 : 8;
+    const height = deposits.find(([cell]) => cell === i)?.[1];
+    const color = (lo, hi, a) => lo.map((v, k) => Math.round(lerp(v, hi[k], a)));
+    return {
+      inner: color([base, base - 1, base + 4], [211, 213, 248], e),
+      outer: color([8, 7, 12], [132, 136, 236], outer),
+      bar: color([24, 23, 51], [223, 226, 254], clamp(band * 1.8)),
+      height: height ? 280 + height : 0,
+      ramp: height > 40 ? [[230, 233, 254], [150, 151, 255], [143, 144, 237]]
+        : [[149, 146, 246], [220, 222, 255], [246, 247, 255]],
+    };
+  });
+  const tracks = Array.from({ length: 75 }, (_, i) => {
+    const jet = i < 36 ? i % 3 : -1;
+    const angle = jet >= 0 ? (JET_AXES[jet][0] + normal() * JET_AXES[jet][1] * .42) * D : random() * Math.PI * 2;
+    const curvature = (random() < .5 ? -1 : 1) * (.0002 + .009 * random() ** 2);
+    return { angle, curvature };
+  });
+  const loops = Array.from({ length: 45 }, () => {
+    const a = random() * Math.PI * 2, radius = 28 + 100 * random(), distance = radius * (.9 + .35 * random());
+    return [distance * Math.cos(a), distance * Math.sin(a), radius];
+  });
+  return { cells, tracks, loops };
+}

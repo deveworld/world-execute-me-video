@@ -2,10 +2,11 @@
 // Superformula editor: six sliders drive a Gielis curve on a polar grid, with log-scale knobs, two
 // morphs (radial lerp, and a "pop" through a circle when m changes), the 9.43 s rotation, the
 // 1→2→4→8→16 cell division and the 4x4 shape grid.
-import { clamp, lerp, prog, ease, oexp, table, mix, rgb, paperBackground } from './lib/util.js';
+import { clamp, lerp, ease, oexp, mix, rgb, paperBackground } from './lib/util.js';
 import { N, radii, CIRCLE, blend, pop, radiusAt, tracePath } from './lib/sf.js';
 
-const MONO = '"Geist Mono"';
+const MONO = '"Roboto Mono"';
+const UI_FONT = '"Geist Mono"';
 const ACCENT = [93, 90, 227];
 const BLACK = [0, 0, 0];
 
@@ -56,12 +57,8 @@ function hotAge(row, t) {
 
 // ---------------------------------------------------------------- shape states
 // Each state: radii, rotation. Transitions: 'lerp' (radial blend) or 'pop' (m changed).
-const ROT_TABLE = [ // rotation (deg) of the m=6 star, frames 566..593
-  [9.4333, 0], [9.45, 0.5], [9.4667, 1.5], [9.4833, 3], [9.5, 5], [9.5167, 7.5], [9.5333, 9.5], [9.55, 12],
-  [9.5667, 14], [9.5833, 16], [9.6, 18], [9.6167, 19.5], [9.6333, 21], [9.65, 22.5], [9.6667, 23.5],
-  [9.6833, 24.5], [9.7, 25.5], [9.7167, 26.2], [9.7333, 27], [9.75, 27.5], [9.7667, 28], [9.7833, 28.4],
-  [9.8, 28.7], [9.8167, 29], [9.8333, 29.2], [9.85, 29.4], [9.8667, 29.6], [9.8833, 29.75], [9.95, 30],
-];
+const settled = (u) => 1 - (1 + u) * Math.exp(-u);
+const rotation = (t) => 30 * settled(clamp(t - 9.4333, 0, 0.52) / 0.081) / settled(0.52 / 0.081);
 const SHAPES = [
   { t0: -1, p: [0, 2, 2, 2], kind: 'lerp' },
   { t0: 8.0175, p: [4, 12, 15, 15], kind: 'pop' },
@@ -75,7 +72,7 @@ const SHAPES = [
 ];
 for (const s of SHAPES) s.r = s.p[0] === 0 ? CIRCLE : radii(s.p[0], s.p[1], s.p[2], s.p[3]);
 const DEG = Math.PI / 180;
-const rotOf = (i, t) => (i === 7 ? table(ROT_TABLE, t) * DEG : 0);
+const rotOf = (i, t) => (i === 7 ? rotation(t) * DEG : 0);
 const scratch = new Float32Array(N), scratch2 = new Float32Array(N);
 
 // Rotation is baked into the radius array so pops between rotated shapes stay correct.
@@ -99,8 +96,8 @@ function bigShape(t) {
 }
 
 // ---------------------------------------------------------------- heading words
-const HEAD = { x: 110.7, base: 215, size: 87 };
-const ADV = 0.6 * HEAD.size;
+const HEAD = { x: 110.7, base: 214, size: 85 };
+const ADV = 52.2;
 const WORDS = [
   { text: 'Fill', col: 0, t0: 7.331 },
   { text: 'in', col: 5, t0: 7.94 },
@@ -122,14 +119,6 @@ const center = (gen, idx) => {
   const cy = gen === 0 ? 600 : gen === 1 ? 490 : gen < 4 ? (r < 2 ? 320 : 660) : GY[r];
   return [cx, cy];
 };
-const FPS = 60;
-const COPY_F0 = [616, 623, 630, 637];
-const COPY_TAB = [
-  [[16, 15, 25], [50, 45, 91], [45, 39, 96], [41, 36, 84], [37, 33, 80], [35, 30, 82], [34, 29, 80]],
-  [[26, 23, 49], [42, 37, 88], [40, 35, 89], [39, 33, 83], [35, 30, 77], [31, 26, 77], [32, 27, 77]],
-  [[40, 36, 72], [30, 26, 64], [29, 25, 65], [22, 19, 55], [17, 13, 50], [14, 10, 45], [13, 9, 44]],
-  [[29, 27, 53], [29, 25, 64], [24, 21, 57], [20, 16, 51], [17, 13, 51], [12, 9, 46], [11, 8, 45], [10, 7, 44], [6, 4, 36], [3, 1, 33], [1, 0, 31], [0, 0, 11], [0, 0, 9], [0, 0, 0]],
-];
 // copy flag: does this cell become a new copy at generation g?
 const isCopyAt = (gen, idx) => {
   const r = Math.floor(idx / 4), c = idx % 4;
@@ -140,31 +129,39 @@ const isCopyAt = (gen, idx) => {
   return false;
 };
 
-// Final grid shapes: [m, n1, n2=n3, rot]
-const CELL = [
-  [4, 0.922, 3.939, 0.785], [4, 11.708, 11.708, 0.785], [4, 16.834, 34.802, 0.785], [4, 0.535, 0.535, 0],
-  [6, 0.922, 3.939, 0], [6, 41.73, 20.186, 0], [6, 16.834, 34.802, 0], [6, 0.535, 0.535, 0.5236],
-  [8, 1.325, 4.723, 0.3927], [8, 60, 16.834, 0.3927], [8, 24.205, 50.038, 0.3927], [8, 0.535, 0.535, 0],
-  [10, 0.922, 3.939, 0], [10, 6.791, 0.922, 0.3142], [10, 11.708, 24.205, 0], [10, 0.535, 0.535, 0.3142],
-];
-const CELL_R = CELL.map(([m, n1, n2, rot]) => {
-  const out = new Float32Array(N);
-  const base = radii(m, n1, n2, n2);
+// Four shape families share the row's rotational symmetry.
+const CELL_R = Array.from({ length: 16 }, (_, idx) => {
+  const row = Math.floor(idx / 4), col = idx % 4, m = 4 + row * 2;
+  const powers = [[1, 4], [[11, 32, 88, 148][row], [11, 16, 24, 26][row]], [0.6, 0.9], [0.6, 0.4]][col];
+  const rot = col < 2 ? (row % 2 ? 0 : Math.PI / m) : (row % 2 ? Math.PI / m : 0);
+  const base = radii(m, powers[0], powers[1], powers[1]), out = new Float32Array(N);
   for (let i = 0; i < N; i++) out[i] = radiusAt(base, (i / N) * Math.PI * 2, rot);
   return out;
 });
 const STAR8 = radii(8, 0.6, 0.9, 0.9);
-const MORPH_C0 = 10.8033, MORPH_STEP = 0.0288, MORPH_D = [0.27, 0.29, 0.32, 0.40];
-const inOutExpo = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k < 0.5 ? Math.pow(2, 20 * k - 10) / 2 : (2 - Math.pow(2, -20 * k + 10)) / 2);
+// Low angular harmonics round the corners while each cell passes through a circle.
+const SOFT_STAR = Float32Array.from(STAR8, (_, i) => 0.765 + 0.235 * Math.cos(8 * i / N * Math.PI * 2));
+const SOFT_CELLS = CELL_R.map((shape, idx) => {
+  const row = Math.floor(idx / 4), m = 4 + row * 2, phase = row % 2 ? Math.PI / m : 0;
+  const low = Math.min(...shape), mid = (1 + low) / 2, amp = (1 - low) / 2;
+  return Float32Array.from(shape, (_, i) => mid + amp * Math.cos(m * (i / N * Math.PI * 2 - phase)));
+});
+const MORPH_C0 = 10.806, MORPH_STEP = 0.028;
+const MORPH_SETTLE = [0.019, 0.024, 0.029, 0.05];
 const cellBuf = new Float32Array(N);
 function cellShape(idx, t) {
   const r = Math.floor(idx / 4), c = idx % 4;
   const tc = MORPH_C0 + MORPH_STEP * (r + c);
-  const p = inOutExpo((t - tc) / MORPH_D[c] + 0.5);
-  if (p <= 0) return STAR8;
-  if (p >= 1) return CELL_R[idx];
-  if (CELL[idx][0] === 8) return blend(STAR8, CELL_R[idx], p, cellBuf);
-  return pop(STAR8, CELL_R[idx], p, cellBuf, 1);
+  if (t < tc) {
+    const p = Math.exp((t - tc) / 0.029);
+    if (p < 0.025) return STAR8;
+    for (let i = 0; i < N; i++) cellBuf[i] = lerp(lerp(STAR8[i], SOFT_STAR[i], Math.min(1, 2 * p)), 1, p);
+    return cellBuf;
+  }
+  const p = 1 - Math.exp(-Math.pow((t - tc) / (c === 3 ? 0.043 : MORPH_SETTLE[c]), c === 3 ? 2 : 1));
+  if (p > 0.99) return CELL_R[idx];
+  for (let i = 0; i < N; i++) cellBuf[i] = lerp(1, lerp(SOFT_CELLS[idx][i], CELL_R[idx][i], p * p), p);
+  return cellBuf;
 }
 
 // ---------------------------------------------------------------- "Initialization"
@@ -174,24 +171,12 @@ export default {
   id: 'intro/params',
   start: 7.33,
   end: 11.13,
-  fonts: [`400 87px ${MONO}`, `800 151px ${MONO}`, `500 30px ${MONO}`],
+  fonts: [`400 85px ${MONO}`, `700 85px ${MONO}`, `800 151px ${UI_FONT}`, `500 30px ${UI_FONT}`],
   async create(root, env) {
     const { W, H } = env;
     const { ctx } = env.canvas(root);
-    const bg = paperBackground(W, H);
-    // Radial outlines during the short 4×4 morph: the cells pop at different times and pass
-    // through rounded intermediate shapes.
-    const cellData = await env.loadJSON('/scenes/intro/lib/cell-radii.json');
-    // superformula transition frames: frame -> [m, n1, n2, n3, rotation, scale]
-    const sfFit = (await env.loadJSON('/scenes/intro/lib/sf-fits.json')).frames;
-    const lettering=await env.loadJSON('/scenes/intro/lib/precision-lettering.json');
-    const headingPaths=Object.fromEntries(Object.entries(lettering.heading).map(([k,v])=>[k,new Path2D(v)]));
-    const regularDataPath=new Path2D(lettering.dataRegular),labelPaths=lettering.paramLabels.map(p=>new Path2D(p));
-    const cellPaths = cellData.frames.map(cells => cells.map((rr,idx)=>{
-      const p=new Path2D(),cx=GX[idx%4]+.5,cy=GY[Math.floor(idx/4)]+1;
-      rr.forEach((v,j)=>{const a=j/rr.length*Math.PI*2,x=cx+Math.cos(a)*v/cellData.scale,y=cy-Math.sin(a)*v/cellData.scale;j?p.lineTo(x,y):p.moveTo(x,y);});p.closePath();return p;
-    }));
-
+    ctx.textRendering = 'geometricPrecision';
+    const bg = paperBackground(W, H, { inner: 245, outer: 222.7, r0: 562, r1: 1100, cx: 960, cy: 541 });
     // ring segments of the polar grid appear in a scattered order while the grid grows
     const segDelay = [];
     for (let ring = 0; ring < 5; ring++) {
@@ -213,12 +198,7 @@ export default {
       ctx.globalAlpha *= alpha * (extra.alpha ?? 1);
       ctx.font = `${extra.weight ?? 400} ${HEAD.size}px ${MONO}`;
       ctx.fillStyle = rgb(extra.color ?? [2, 2, 4]);
-      ctx.translate(.5,off+.5);ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=1;ctx.lineJoin='round';
-      const paint=p=>{ctx.fill(p,'evenodd');ctx.stroke(p);};
-      if(w.text==='data'){
-        const bold=clamp(((extra.weight??400)-400)/400),a=ctx.globalAlpha;
-        ctx.globalAlpha=a*(1-bold);paint(regularDataPath);ctx.globalAlpha=a*bold;paint(headingPaths.data);
-      }else paint(headingPaths[w.text]);
+      [...w.text].forEach((ch, i) => ctx.fillText(ch, x + i * ADV, HEAD.base + off));
       ctx.restore();
     }
 
@@ -233,7 +213,7 @@ export default {
         const toBold = ease.inOutQuad(clamp((t - 8.517) / 0.066));
         const toDark = ease.inOutQuad(clamp((t - 9.03) / 0.32));
         const col = mix(mix([2, 2, 4], ACCENT, toBold), [4, 3, 11], toDark);
-        word(w, t, { weight: Math.round(400 + 400 * toBold), color: col });
+        word(w, t, { weight: Math.round(400 + 300 * toBold), color: col });
       }
       ctx.restore();
     }
@@ -251,8 +231,14 @@ export default {
         const y = ROW_Y[row];
         ctx.save();
         ctx.globalAlpha = a;
-        // Static labels are drawn from their glyph outlines.
-        ctx.save();ctx.translate(.5,.5);ctx.fillStyle='#000';ctx.strokeStyle='#000';ctx.lineWidth=.8;ctx.fill(labelPaths[row],'evenodd');ctx.stroke(labelPaths[row]);ctx.restore();
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'left';
+        ctx.font = `400 30px ${MONO}`;
+        ctx.fillText(['m', 'n', 'n', 'n', 'a', 'b'][row], 113.5, y + 9);
+        if (row > 0 && row < 4) {
+          ctx.font = `400 17px ${MONO}`;
+          ctx.fillText(String(row), 132, y + 15);
+        }
         // track
         ctx.fillStyle = 'rgb(185,185,185)';
         ctx.fillRect(TRACK_X0, y, TRACK_LEN, 1);
@@ -278,7 +264,7 @@ export default {
         }
         // value text (right aligned at 720)
         ctx.fillStyle = '#000';
-        ctx.font = `500 30px ${MONO}`;
+        ctx.font = `500 30px ${UI_FONT}`;
         ctx.textAlign = 'right';
         if (!on) {
           ctx.fillText('–', 720, y + 8.6);
@@ -333,12 +319,10 @@ export default {
 
     const CX = 1312, CY = 600;
     function drawBigCurve(t) {
-      const fit = sfFit[Math.round(t * FPS)];
-      const r = fit ? radii(fit[0], fit[1], fit[2], fit[3]) : bigShape(t);
-      const rot = fit ? fit[4] : 0, RR = 330 * (fit ? fit[5] : 1);
+      const r = bigShape(t), rot = 0, RR = 330;
       ctx.save();
       ctx.lineJoin = 'round';
-      ctx.lineWidth = 1.7; // source stroke ink is ~0.89x a 1.9 px line
+      ctx.lineWidth = 1.7;
       ctx.strokeStyle = rgb(curveColor(t));
       ctx.beginPath();
       tracePath(ctx, r, CX, CY, RR, rot);
@@ -372,9 +356,8 @@ export default {
       }
       ctx.save();
       ctx.lineJoin = 'round';
-      // stroke weight per phase (relative to a 1.9 px line: 0.85, 0.68, then 0.95)
-      const fr = Math.round(t * FPS);
-      ctx.lineWidth = fr < 630 ? 1.6 : fr < 649 ? 1.3 : 1.8;
+      // Thin the strokes during subdivision, then restore the final grid weight.
+      ctx.lineWidth = t < 10.5 ? 1.6 : t < 10.8167 ? 1.3 : 1.8;
       for (const idx of reps) {
         const p = gen > 0 ? oexp(t, SPLIT_T[gen - 1], SPLIT_D) : 1;
         // parent position: representative at gen-1
@@ -386,19 +369,16 @@ export default {
         // colour: newest copies are indigo, fading to black
         let col = BLACK;
         if (gen > 0 && isCopyAt(gen, idx)) {
-          // darkest stroke colour of the new copies per frame after each split (with the video's chroma
-          // subsampling undone)
-          const tab = COPY_TAB[gen - 1], k = clamp(Math.round(t * FPS) - COPY_F0[gen - 1], 0, tab.length - 1), m = tab[k];
-          col = [Math.min(255, m[0] / 0.85), Math.min(255, m[1] / 0.9), Math.min(255, m[2] / 0.63)];
+          const age = t - SPLIT_T[gen - 1];
+          const pulse = (0.3 + 0.7 * ease.outQuad(clamp(age / 0.025))) * Math.exp(-age / (gen < 3 ? 0.35 : 0.17))
+            * (gen === 4 ? 1 - ease.inOutQuad(clamp((t - 10.78) / 0.10)) : 1);
+          col = [62 * pulse, 53 * pulse, 156 * pulse];
         }
         const shape = gen === 4 ? cellShape(idx, t) : STAR8;
         ctx.strokeStyle = rgb(col);
-        if(gen===4 && t*60>=cellData.firstFrame-.01){
-          const fi=clamp(Math.round(t*60)-cellData.firstFrame,0,cellPaths.length-1);
-          ctx.stroke(cellPaths[fi][idx]);
-        }else{
-          ctx.beginPath();tracePath(ctx, shape, gen === 4 ? cx + .5 : cx, gen === 4 ? cy + 1 : cy, R);ctx.stroke();
-        }
+        ctx.beginPath();
+        tracePath(ctx, shape, gen === 4 ? cx - .5 : cx, gen === 4 ? cy - .5 : cy, R);
+        ctx.stroke();
       }
       // centre marks
       const k = t - 10.812;
@@ -424,7 +404,7 @@ export default {
 
     function drawInit(t) {
       ctx.save();
-      ctx.font = `800 ${INIT.size}px ${MONO}`;
+      ctx.font = `800 ${INIT.size}px ${UI_FONT}`;
       ctx.fillStyle = 'rgb(18,17,19)';
       for (let i = 0; i < INIT.text.length; i++) {
         const t0 = INIT.t0 + i * INIT.step;

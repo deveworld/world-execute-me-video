@@ -1,10 +1,7 @@
-// "Though we are trapped, we are trapped, ah" — a heart-shaped maze is drawn outward from two dots
-// (lavender = me, orange = you); the heart's outer wall is traced last by two glowing pens.
-// Wall geometry and per-wall pen timing are in maze/walls.js.
 import { loadLoveFonts, clamp, prog, table } from './lib.js';
-import { WALLS } from './maze/walls.js';
+import { createWalls } from './maze/layout.js';
 
-const X0 = 800, Y0 = 140, C = 40;
+const C = 40;
 const FONT = '800 96px LoveStencil';
 const TXT = '#ecebf6';
 const F = 1 / 60;
@@ -32,14 +29,7 @@ export default {
     await loadLoveFonts([FONT]);
     const { ctx } = env.canvas(root);
 
-    // Units with their drawing direction: the end that lit up first is where the pen starts.
-    const units = WALLS.map(([vert, i, j, ta, tb, boundary]) => {
-      const ax = X0 + C * i + 0.5, ay = Y0 + C * j + 0.5;
-      const bx = vert ? ax : ax + C, by = vert ? ay + C : ay;
-      const fwd = ta <= tb;
-      const t0 = Math.min(ta, tb) - F, t1 = Math.max(ta, tb);
-      return { sx: fwd ? ax : bx, sy: fwd ? ay : by, ex: fwd ? bx : ax, ey: fwd ? by : ay, t0, t1, boundary: !!boundary, left: (ax + bx) / 2 < 1220 };
-    });
+    const units = createWalls();
     const inkLeft = new Map();
     ctx.font = FONT;
     for (const [w] of WORDS) inkLeft.set(w, ctx.measureText(w).actualBoundingBoxLeft);
@@ -58,7 +48,7 @@ export default {
       ctx.lineCap = 'square';
       const visible=[];
       for (const u of units) {
-        if (t < u.t0) continue;
+        if (u.t0 === undefined || t < u.t0) continue;
         const f = clamp((t - u.t0) / Math.max(F, u.t1 - u.t0));
         if (f * C < 1.5) continue;
         let L;
@@ -156,7 +146,7 @@ export default {
           ctx.restore();
           continue;
         }
-        // Wipe front per frame (fraction of the ink width).
+        // A short eased wipe reveals each word.
         const n = (t - t0) * 60;
         const p = table(t0 < 174.3 ? [[-1, 0], [0, .2], [1, .75], [2, .95], [3, 1]] : [[-1, 0], [0, .62], [1, .9], [2, 1]], n);
         if (p <= 0) continue;

@@ -1,67 +1,94 @@
-// Time-stamped polylines, drawn as a write-on.
-// data = { w: width, c: color, s: [[x, y, t, x, y, t, ...], ...] }; a point is drawn once t >= its time.
-export class TracedStrokes {
-  constructor(data, { width, color, dotR = 0, dotHold = 0.02, tShift = 0, filter } = {}) {
-    this.w = width ?? data.w;
-    this.color = color ?? data.c;
-    this.dotR = dotR;
-    this.dotHold = dotHold;
-    this.chains = [];
-    for (const flat of data.s) {
-      const n = flat.length / 3;
-      const xs = new Float32Array(n), ys = new Float32Array(n), ts = new Float64Array(n);
-      let m = -Infinity;
-      for (let i = 0; i < n; i++) {
-        xs[i] = flat[3 * i];
-        ys[i] = flat[3 * i + 1];
-        m = Math.max(m, flat[3 * i + 2] + tShift);
-        ts[i] = m;
-      }
-      const c = { xs, ys, ts, t0: ts[0], t1: ts[n - 1] };
-      if (!filter || filter(c)) this.chains.push(c);
-    }
-    this.chains.sort((a, b) => a.t0 - b.t0);
-    this.tEnd = Math.max(...this.chains.map((c) => c.t1));
-    this.tStart = Math.min(...this.chains.map((c) => c.t0));
-  }
+// A round pen follows short Bezier centreline strokes. Pressure changes along
+// the stroke, and the completed ribbon is cached when the scene is created.
+const clamp = x => Math.min(1, Math.max(0, x));
+const mix = (a, b, u) => a + (b - a) * u;
 
-  // Draw the state at time t. `extra(ctx)` lets callers tweak style.
-  draw(ctx, t, { color, width, alpha = 1 } = {}) {
-    const eps = 1e-4;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = color ?? this.color;
-    ctx.lineWidth = width ?? this.w;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    let hx = 0, hy = 0, hT = -Infinity;
-    for (const c of this.chains) {
-      if (c.t0 > t + eps) continue;
-      const { xs, ys, ts } = c;
-      let lo = 0, hi = ts.length - 1;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (ts[mid] <= t + eps) lo = mid; else hi = mid - 1;
-      }
-      ctx.moveTo(xs[0], ys[0]);
-      if (lo === 0) ctx.lineTo(xs[0] + 0.01, ys[0]);
-      for (let i = 1; i <= lo; i++) ctx.lineTo(xs[i], ys[i]);
-      if (ts[lo] > hT) { hT = ts[lo]; hx = xs[lo]; hy = ys[lo]; }
+function sample(d, transform) {
+  const tokens = d.match(/[MLQC]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi) || [];
+  const points = [];
+  let i = 0, p = [0, 0], command;
+  const read = () => [Number(tokens[i++]), Number(tokens[i++])];
+  const add = q => points.push([transform.x + q[0] * transform.sx, transform.y + q[1] * transform.sy]);
+  while (i < tokens.length) {
+    if (/^[MLQC]$/i.test(tokens[i])) command = tokens[i++].toUpperCase();
+    if (command === 'M') { p = read(); add(p); command = 'L'; continue; }
+    const a = p;
+    let b, c, end;
+    if (command === 'L') end = read();
+    else if (command === 'Q') { b = read(); end = read(); }
+    else if (command === 'C') { b = read(); c = read(); end = read(); }
+    else throw new Error(`Unsupported pen command ${command}`);
+    const control = [a, ...(b ? [b] : []), ...(c ? [c] : []), end];
+    let length = 0;
+    for (let j = 1; j < control.length; j++) length += Math.hypot((control[j][0] - control[j - 1][0]) * transform.sx, (control[j][1] - control[j - 1][1]) * transform.sy);
+    const n = Math.max(2, Math.ceil(length / 2));
+    for (let j = 1; j <= n; j++) {
+      const u = j / n, v = 1 - u;
+      if (command === 'L') add([mix(a[0], end[0], u), mix(a[1], end[1], u)]);
+      else if (command === 'Q') add([v * v * a[0] + 2 * v * u * b[0] + u * u * end[0], v * v * a[1] + 2 * v * u * b[1] + u * u * end[1]]);
+      else add([v ** 3 * a[0] + 3 * v * v * u * b[0] + 3 * v * u * u * c[0] + u ** 3 * end[0], v ** 3 * a[1] + 3 * v * v * u * b[1] + 3 * v * u * u * c[1] + u ** 3 * end[1]]);
     }
-    ctx.stroke();
-    if (this.dotR > 0 && hT > -Infinity && t - hT <= this.dotHold && t < this.tEnd + this.dotHold) {
-      ctx.fillStyle = color ?? this.color;
-      ctx.beginPath();
-      ctx.arc(hx, hy, this.dotR, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
+    p = end;
   }
+  return points;
 }
 
-export async function loadStrokes(name) {
-  const res = await fetch(new URL(`./data/${name}.json`, import.meta.url));
-  if (!res.ok) throw new Error(`strokes ${name}: HTTP ${res.status}`);
-  return res.json();
+function ribbon(points, lengths, total, width, pressure, fraction) {
+  const stop = total * fraction, left = [], right = [];
+  let tip = points[0], tipRadius = width / 2;
+  for (let i = 0; i < points.length; i++) {
+    let p = points[i];
+    if (lengths[i] > stop) {
+      const a = points[i - 1], k = (stop - lengths[i - 1]) / (lengths[i] - lengths[i - 1]);
+      p = [mix(a[0], p[0], k), mix(a[1], p[1], k)];
+    }
+    const a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
+    const dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1;
+    const s = Math.min(stop, lengths[i]) / (total || 1);
+    const r = width / 2 * (1 + pressure * (0.6 * Math.abs(dy / len) + 0.25 * Math.sin(s * Math.PI * 3) - 0.3));
+    left.push([p[0] - dy / len * r, p[1] + dx / len * r]);
+    right.push([p[0] + dy / len * r, p[1] - dx / len * r]);
+    tip = p; tipRadius = r;
+    if (lengths[i] >= stop) break;
+  }
+  const path = new Path2D();
+  path.moveTo(...left[0]);
+  for (let i = 1; i < left.length; i++) path.lineTo(...left[i]);
+  for (let i = right.length - 1; i >= 0; i--) path.lineTo(...right[i]);
+  path.closePath();
+  path.moveTo(tip[0] + tipRadius, tip[1]); path.arc(...tip, tipRadius, 0, Math.PI * 2, true);
+  path.moveTo(points[0][0] + width / 2, points[0][1]); path.arc(...points[0], width / 2, 0, Math.PI * 2, true);
+  return path;
+}
+
+export function penStroke(d, { x = 0, y = 0, sx = 1, sy = sx, width = 3, pressure = 0.15, start = 0, duration = 1, ease = x => x } = {}) {
+  const points = sample(d, { x, y, sx, sy });
+  const lengths = [0];
+  for (let i = 1; i < points.length; i++) lengths[i] = lengths[i - 1] + Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+  const total = lengths[lengths.length - 1], full = ribbon(points, lengths, total, width, pressure, 1);
+  return {
+    start, end: start + duration,
+    draw(ctx, t) {
+      if (t < start) return;
+      const k = ease(clamp((t - start) / duration));
+      ctx.fill(k >= 1 ? full : ribbon(points, lengths, total, width, pressure, k));
+    },
+  };
+}
+
+// Each glyph has a few pen lifts. Their durations follow their curve lengths.
+export function penGlyph(paths, options) {
+  const pieces = paths.split('|').map(d => d.trim()).filter(Boolean);
+  const lengths = pieces.map(d => {
+    const p = sample(d, { x: 0, y: 0, sx: 1, sy: 1 });
+    return p.slice(1).reduce((sum, q, i) => sum + Math.hypot(q[0] - p[i][0], q[1] - p[i][1]), 0);
+  });
+  const total = lengths.reduce((a, b) => a + b, 0);
+  let offset = 0;
+  return pieces.map((d, i) => {
+    const duration = options.duration * lengths[i] / total;
+    const result = penStroke(d, { ...options, start: options.start + offset, duration });
+    offset += duration;
+    return result;
+  });
 }

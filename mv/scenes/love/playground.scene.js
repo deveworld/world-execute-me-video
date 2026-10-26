@@ -1,9 +1,16 @@
-// "I've studied, I've studied how to properly LO-O-OVE" — a TensorFlow-Playground-style UI that learns a
-// heart, resets, and learns "Lo-o-ove". Neuron previews and output
-// contours come from small fitted scalar networks.
-import { loadLoveFonts, clamp, lerp, table } from './lib.js';
-import { NEURONS } from './playground/neurons.js';
-import { OUTPUT_NETWORKS } from './playground/output-networks.js';
+import { loadLoveFonts, clamp, lerp } from './lib.js';
+import { dataset } from './playground/training.js';
+import { createLabels } from './playground/datasets.js';
+
+// Resolves with every training snapshot and its evaluated grids (see playground/train-worker.js).
+function trainInWorker(jobs) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./playground/train-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = ({ data }) => { worker.terminate(); resolve(data); };
+    worker.onerror = (e) => { worker.terminate(); reject(new Error(e.message || 'playground training failed')); };
+    worker.postMessage(jobs, jobs.flatMap(job => [job.inputs.buffer, job.targets.buffer]));
+  });
+}
 
 const W = 1920, H = 1080;
 const FEATURES = ['x', 'y', 'sin x', 'cos x', 'sin 2x', 'cos 2x', 'sin 4x', 'cos 4x', 'sin 8x', 'cos 8x', 'sin 16x', 'cos 16x',
@@ -15,22 +22,12 @@ const FEAT_FN = [(x) => x / Math.PI, (x, y) => y / Math.PI, (x) => Math.sin(x), 
 const OFF1 = new Set([10, 11, 20, 21, 22, 23]); // features disabled while learning the heart
 const ROW = (i) => 215 + 29.17 * i;
 
-// Timeline.
-const EPOCH_T = [177.45, 177.567, 177.683, 177.8, 177.9, 178.017, 178.133, 178.25, 178.367, 178.483, 178.6, 178.717, 178.833,
-  178.95, 179.067, 179.183, 179.3, 179.4, 179.517, 179.633, 179.75, 179.867, 179.983, 180.1, 180.217, 180.333, 180.45,
-  180.567, 180.683, 180.8, 180.9, 181.017];
+// The display and the training preview use independent clocks.
 const RESET = 179.75, DISCRETE = 180.2083333333;
-// After "Discretize" the trained links strengthen in steps.
-const L1_STEP = [[180.2, .94], [180.217, .97], [180.233, .99], [180.35, 1.0]];
-const L2_STEP = [[180.2, .86], [180.217, .91], [180.233, .94], [180.35, .96], [180.9, .98]];
-const OUT_STEPS = [[180.2, 0], [180.217, .3], [180.233, .45], [180.25, .45], [180.267, .48], [180.317, .48], [180.333, .74], [180.45, .74], [180.467, .89], [180.783, .89], [180.8, 1]];
-const OUT_FINAL = [[212,210,211],[207,205,206],[194,192,193],[169,167,168],[182,180,178],[201,201,201],[206,206,206],[172,172,172],[193,193,193],[196,196,196],[210,210,210],[166,155,158],
-  [214,214,214],[164,163,172],[163,162,167],[206,206,206],[179,179,179],[149,149,149],[133,131,145],[158,157,166],[203,197,202],[165,162,166],[186,184,185],[155,141,145]];
-const LOSS = [[0, 0.44], [177.517, 0.433], [177.633, 0.398], [177.75, 0.298], [177.867, 0.167], [177.983, 0.095], [178.1, 0.067],
-  [178.217, 0.053], [178.333, 0.044], [178.45, 0.038], [178.567, 0.034], [178.667, 0.031], [178.783, 0.028], [178.9, 0.026],
-  [179.017, 0.025], [179.133, 0.024], [179.25, 0.023], [179.367, 0.022], [179.483, 0.021], [179.6, 0.021], [179.7, 0.021],
-  [179.75, 0.376], [179.833, 0.363], [179.95, 0.305], [180.067, 0.258], [180.167, 0.233], [180.283, 0.138], [180.4, 0.063],
-  [180.517, 0.045], [180.633, 0.038], [180.75, 0.033], [180.867, 0.03], [180.983, 0.028]];
+const FIRST = 177.3333333333, UPDATE = 7 / 60;
+const epochIndex = t => Math.max(0, Math.floor((t - 177.442) / (15 / 130)) + 1);
+const runIndex = t => t >= RESET ? 1 : 0;
+const stepAt = t => Math.max(0, Math.floor((t - (t >= RESET ? RESET : FIRST) + 1e-7) / UPDATE));
 
 const BLUE = [172, 176, 246], ORANGE = [253, 192, 160], WHITE = [250, 250, 250];
 // Feature previews have a greyer zero than the neuron previews.
@@ -46,9 +43,9 @@ export default {
   start: 177.325,
   end: 181.042,
   async create(root, env) {
-    await loadLoveFonts(['300 40px Roboto', '500 12px Roboto', '400 15px Roboto', '400 22px "Roboto Mono"']);
+    await loadLoveFonts(['300 40px Roboto', '500 12px Roboto', '400 15px Roboto', '400 22px "Roboto Mono"', '800 300px Nunito']);
     const { ctx } = env.canvas(root);
-    const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
+    const mk = (w, h) => { const c = new OffscreenCanvas(w, h); return [c, c.getContext('2d')]; };
 
     // ---------- background with vignette
     const [bgC, bg] = mk(W, H);
@@ -67,56 +64,42 @@ export default {
       g2.restore();
     };
 
-    // The output is a 100×100 scalar field on the source's [-π,π]² grid.
-    const N=100;
-    const gx=i=>-Math.PI+(i+.5)*2*Math.PI/N;
+    const labels = createLabels();
+    const jobs = [
+      [dataset(labels.heart, 4096, 41, 0.002), { seed: 73, heart: true, epochs: 21, rate: 0.0125 }],
+      [dataset(labels.type, 4096, 103, 0.008), { seed: 137, epochs: 11, rate: 0.065, warmup: 1.5, refine: true }],
+    ].map(([data, options]) => ({
+      inputs: Float64Array.from(data.flatMap(point => Array.from(point.input))),
+      targets: Float64Array.from(data, point => point.target),
+      options,
+    }));
+    const results = await trainInWorker(jobs);
+    const runs = results.map(run => run.map(s => s.net));
+    const NN = 24, N = 100;
     const mapCanvas = (vals, binary) => {
-      const [c, x] = mk(N, N);
-      const img = x.createImageData(N, N);
-      for (let k = 0; k < N * N; k++) {
-        const v = binary ? (vals[k] > 0 ? 1 : -1) : vals[k];
-        // The large output's neutral zero is darker than the tiny node maps.
-        const amount=Math.min(1,Math.abs(v)),c=v>=0?BLUE:ORANGE;
-        const [r,g,b]=c.map(channel=>lerp(238,channel,amount));
-        img.data[4 * k] = r; img.data[4 * k + 1] = g; img.data[4 * k + 2] = b; img.data[4 * k + 3] = 255;
+      const [c, x] = mk(N, N), img = x.createImageData(N, N);
+      for (let p = 0; p < N * N; p++) {
+        const v = binary ? (vals[p] > 0 ? 1 : -1) : vals[p];
+        const amount = Math.min(1, Math.abs(v)), color = v >= 0 ? BLUE : ORANGE;
+        for (let k = 0; k < 3; k++) img.data[4 * p + k] = lerp(238, color[k], amount);
+        img.data[4 * p + 3] = 255;
       }
       x.putImageData(img, 0, 0);
       return c;
     };
-    // The final scalar output neuron runs on the same sinusoidal feature family.
-    // Small fitted networks give the cloudy training contour and the discrete lettering.
-    const inputFields=Array.from({length:N*N},(_,p)=>FEAT_FN.map(f=>f(gx(p%N),-gx(Math.floor(p/N)))));
-    function outputNetwork(net){
-      const basis=NEURONS[net.basis];
-      const out=new Float32Array(N*N),a1=new Float64Array(24),a2=new Float64Array(24);
-      for(let p=0;p<N*N;p++){
-        const feat=inputFields[p];
-        for(let j=0;j<24;j++){let s=basis.B1[j];for(let i=0;i<24;i++)s+=basis.W1[j][i]*feat[i];a1[j]=Math.tanh(s);}
-        for(let j=0;j<24;j++){let s=net.B2[j];for(let i=0;i<24;i++)s+=net.W2[j][i]*a1[i];a2[j]=Math.tanh(s);}
-        let s=net.B3;for(let j=0;j<24;j++)s+=net.W3[j]*a2[j];out[p]=Math.tanh(s);
-      }return out;
-    }
-    const fittedOutputFields=OUTPUT_NETWORKS.map(net=>({...net,v:outputNetwork(net)}));
-    // The map has its own seven-frame update clock. Its brief settling is
-    // independent of the beat-timed epoch digits and occurs before thresholding.
-    // Precompute every presentation frame so arbitrary seeking stays cheap.
-    const MAP_FIRST=10640,MAP_LAST=10862,outputFrames=[];
-    let outputIndex=0;
-    for(let frame=MAP_FIRST;frame<=MAP_LAST;frame++){
-      while(outputIndex+1<fittedOutputFields.length&&fittedOutputFields[outputIndex+1].frame<=frame)outputIndex++;
-      const b=fittedOutputFields[outputIndex],previous=fittedOutputFields[Math.max(0,outputIndex-1)];
-      const a=previous.phase===b.phase?previous:b,k=b.settle[Math.min(3,frame-b.frame)];
-      const vals=k===1?b.v:Float32Array.from(a.v,(v,i)=>lerp(v,b.v[i],k));
-      outputFrames.push(mapCanvas(vals,frame>=10813));
-    }
+    // Heatmaps and neuron previews are drawn into canvases the first time a snapshot is shown.
+    const cached = (cache, key, make) => cache.get(key) ?? cache.set(key, make()).get(key);
+    const mapCache = new Map();
+    const mapAt = (run, i, f, binary) => cached(mapCache, `${run} ${i} ${f} ${binary}`, () => {
+      const amount = f === 3 ? 1 : 1 - Math.exp(-(f + 1) * 0.9);
+      const previous = results[run][Math.max(0, i - 1)].field;
+      return mapCanvas(Float32Array.from(results[run][i].field, (v, p) => lerp(previous[p], v, amount)), binary);
+    });
+    const stateAt = t => runs[runIndex(t)][Math.min(runs[runIndex(t)].length - 1, stepAt(t))];
 
-    // ---------- network: weights, thumbnails
-    const NN = 24;
-    const W1a=NEURONS.initial.W1,W1b=NEURONS.heart.W1,W2a=NEURONS.initial.W2,W2b=NEURONS.heart.W2;
-    const W1c=NEURONS.love.W1,W2c=NEURONS.love.W2;
-    const T = 26; // 24 content pixels plus the source's 1px border
-    // Tiny source previews retain luminance detail while their chroma is sampled
-    // in 2×2 blocks. Reproducing that filter restores their fine checker texture.
+    const T = 26; // 24 content pixels and a one-pixel border
+    // Keep luminance detail while sampling chroma in 2×2 blocks, so the tiny
+    // activation previews retain a fine checker texture.
     function chromaPreview(vals,white){
       const rgb=new Float32Array(24*24*3),Y=new Float32Array(576),U=new Float32Array(576),V=new Float32Array(576);
       for(let p=0;p<576;p++){const c=col(vals[p],white),y=.2126*c[0]+.7152*c[1]+.0722*c[2];Y[p]=y;U[p]=(c[2]-y)/1.8556;V[p]=(c[0]-y)/1.5748;}
@@ -129,9 +112,9 @@ export default {
     const thumb = (fn, white = WHITE, ss = 1) => {
       const [c, x] = mk(T, T);
       const img = x.createImageData(T, T);
-      // ss>1 box-filters each preview pixel (the source's high-frequency features average out).
-      const px=(p,f,o)=>-Math.PI+(p+(ss>1?(o+.5)/ss:.5))*2*Math.PI/24;
-      const vals=Float32Array.from({length:576},(_,p)=>{let s=0;for(let a=0;a<ss;a++)for(let b=0;b<ss;b++)s+=fn(px(p%24,0,a),-px(Math.floor(p/24),0,b),p%24,Math.floor(p/24));return s/(ss*ss);});
+      // Box-filter high-frequency features within each preview pixel.
+      const px=(p,o)=>-Math.PI+(p+(ss>1?(o+.5)/ss:.5))*2*Math.PI/24;
+      const vals=Float32Array.from({length:576},(_,p)=>{let s=0;for(let a=0;a<ss;a++)for(let b=0;b<ss;b++)s+=fn(px(p%24,a),-px(Math.floor(p/24),b),p%24,Math.floor(p/24));return s/(ss*ss);});
       const rgb=chromaPreview(vals,white);
       for (let j = 0; j < 24; j++) for (let i = 0; i < 24; i++) {
         const p=j*24+i,k=4*((j+1)*T+i+1);
@@ -144,31 +127,21 @@ export default {
       return c;
     };
     const featThumbs = FEAT_FN.map((f) => thumb((x, y) => f(x, y), FEAT_WHITE, 4));
-    const on1=i=>!OFF1.has(i),onAll=()=>true;
-    function fittedThumbs(par){
-      const input=Array.from({length:576},(_,p)=>FEAT_FN.map(f=>f(-Math.PI+(p%24+.5)*2*Math.PI/24,Math.PI-(Math.floor(p/24)+.5)*2*Math.PI/24)));
-      const a1=Array.from({length:NN},(_,j)=>Float32Array.from(input,f=>Math.tanh(par.B1[j]+par.W1[j].reduce((s,w,i)=>s+w*f[i],0))));
-      const a2=Array.from({length:NN},(_,j)=>Float32Array.from(input,(_,p)=>Math.tanh(par.B2[j]+par.W2[j].reduce((s,w,i)=>s+w*a1[i][p],0))));
-      return{l1:a1.map(v=>thumb((x,y,i,j)=>v[j*24+i])),l2:a2.map(v=>thumb((x,y,i,j)=>v[j*24+i]))};
-    }
-    const thumbs={p1a:fittedThumbs(NEURONS.initial),p1b:fittedThumbs(NEURONS.heart),p2a:fittedThumbs(NEURONS.reset),p2b:fittedThumbs(NEURONS.love)};
-
-    // ---------- helpers
-    // tick times are the first frame showing the new state; compare with a half-frame tolerance
-    const epochIndex = (t) => { let k = 0; while (k < EPOCH_T.length && t >= EPOCH_T[k] - 0.008) k++; return k; };
-    const lossAt = (t) => { let v = LOSS[0][1]; for (const [t0, l] of LOSS) if (t >= t0 - 0.008) v = l; return v; };
+    const thumbCache = new Map();
+    const thumbsAt = (run, i) => cached(thumbCache, `${run} ${i}`, () => {
+      const layer = values => Array.from({ length: NN }, (_, j) => thumb((x, y, px, py) => values[j * 576 + py * 24 + px]));
+      return { l1: layer(results[run][i].l1), l2: layer(results[run][i].l2) };
+    });
 
     function links(t) {
       const phase2 = t >= RESET;
-      const k = epochIndex(t);
-      const e = phase2 ? k - 20 : k;
-      const s = phase2 ? 1 : 1 - Math.pow(1 - clamp(e / 9), 2); // weights settle during the first epochs
-      const on = phase2 ? onAll : on1;
+      const net = stateAt(t);
+      const on = i => phase2 || !OFF1.has(i);
       ctx.save();
       ctx.lineCap = 'butt';
       // g: ink gain per layer (mean link ink of each band).
       const link = (x0, y0, x1, y1, w, grey = false, g = 1) => {
-        // The source draws thin (~1 px) curves, so the extra ink goes into opacity.
+        // Keep curves thin as weights grow by putting extra ink into opacity.
         const a = Math.min(1, Math.abs(w)), lw = 0.7 + 0.4 * a, ink = g * (0.5 + a) / lw;
         if (a < 0.04) return;
         ctx.strokeStyle = grey ? `rgba(150,150,150,${0.25 + 0.4 * a})`
@@ -182,23 +155,23 @@ export default {
       };
       for (let j = 0; j < NN; j++) for (let i = 0; i < NN; i++) {
         if (!on(i)) continue;
-        const w = phase2 ? W1c[j][i] : lerp(W1a[j][i], W1b[j][i], s);
-        link(209, ROW(i), 493, ROW(j), w, false, phase2 ? 2.1 * table(L1_STEP, t) : 1.4);
+        const w = net.W1[j * NN + i];
+        link(209, ROW(i), 493, ROW(j), w, false, phase2 ? 2.1 : 1.7);
       }
       for (let k2 = 0; k2 < NN; k2++) for (let j = 0; j < NN; j++) {
-        const w = phase2 ? W2c[k2][j] : lerp(W2a[k2][j], W2b[k2][j], s);
-        link(519, ROW(j), 787, ROW(k2), w, false, phase2 ? 2.5 * table(L2_STEP, t) : 2.0);
+        const w = net.W2[k2 * NN + j];
+        link(519, ROW(j), 787, ROW(k2), w, false, phase2 ? 2.5 : 2.4);
       }
-      // Output links stay neutral grey through the reset; after "Discretize" they darken
-      // in epoch steps to per-row shades (mostly grey).
-      const pOut = phase2 ? table(OUT_STEPS, t) : 0;
-      for (let k2 = 0; k2 < NN; k2++) {
-        if (pOut <= 0) { link(813, ROW(k2), 1100, 550, 0.6, true); continue; }
-        const c = OUT_FINAL[k2].map((m) => 244 - (244 - m) / 0.9);
-        ctx.strokeStyle = `rgba(${lerp(150, c[0], pOut)},${lerp(150, c[1], pOut)},${lerp(150, c[2], pOut)},${lerp(0.49, 1, pOut)})`;
-        ctx.lineWidth = lerp(0.8, 1, pOut);
-        const y0 = ROW(k2), xm = (813 + 1100) / 2;
-        ctx.beginPath(); ctx.moveTo(813, y0); ctx.bezierCurveTo(xm, y0, xm, 550, 1100, 550); ctx.stroke();
+      // Output weights use subdued ink until thresholding makes the learned
+      // decision boundary visible. Their darkness follows the actual weights.
+      for (let j = 0; j < NN; j++) {
+        if (t < DISCRETE) { link(813, ROW(j), 1100, 550, 0.6, true); continue; }
+        const amount = Math.min(1, Math.abs(net.W3[j]) * 0.7);
+        const gray = 222 - 90 * amount;
+        ctx.strokeStyle = `rgb(${gray + (net.W3[j] < 0 ? 4 : 0)},${gray},${gray + (net.W3[j] > 0 ? 7 : 0)})`;
+        ctx.lineWidth = 1;
+        const y = ROW(j), xm = (813 + 1100) / 2;
+        ctx.beginPath(); ctx.moveTo(813, y); ctx.bezierCurveTo(xm, y, xm, 550, 1100, 550); ctx.stroke();
       }
       ctx.restore();
     }
@@ -223,23 +196,19 @@ export default {
         ctx.drawImage(featThumbs[i], 183, Math.round(ROW(i) - 13), 26, 26);
         ctx.globalAlpha = 1;
       }
-      const k = epochIndex(t);
-      const set = phase2 ? (t >= DISCRETE ? thumbs.p2b : thumbs.p2a) : (k >= 4 ? thumbs.p1b : thumbs.p1a);
-      const mixA = phase2 ? 1 : clamp((k - 1) / 4);
+      const set = thumbsAt(runIndex(t), Math.min(runs[runIndex(t)].length - 1, stepAt(t)));
       for (let j = 0; j < NN; j++) {
         ctx.drawImage(set.l1[j], 493, Math.round(ROW(j) - 13));
-        if (!phase2 && k < 4) {
-          ctx.globalAlpha = mixA;
-          ctx.drawImage(thumbs.p1b.l1[j], 493, Math.round(ROW(j) - 13));
-          ctx.globalAlpha = 1;
-        }
         ctx.drawImage(set.l2[j], 787, Math.round(ROW(j) - 13));
       }
       ctx.restore();
     }
 
     function output(t) {
-      const img=outputFrames[Math.max(0,Math.min(MAP_LAST-MAP_FIRST,Math.round(t*60)-MAP_FIRST))];
+      const run = runIndex(t), index = Math.min(runs[run].length - 1, stepAt(t));
+      const age = t - (run ? RESET : FIRST) - index * UPDATE;
+      const frame = Math.max(0, Math.min(3, Math.round(age * 60)));
+      const img = mapAt(run, index, frame, t >= DISCRETE);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 1100, 200, 700, 700);
@@ -261,7 +230,7 @@ export default {
       ctx.fillStyle = 'rgb(22,22,24)';
       ctx.fillText(`000,${String(epoch).padStart(3, '0')}`, 1155, 178);
       ctx.textAlign = 'right';
-      ctx.fillText(lossAt(t).toFixed(3), 1801, 948);
+      ctx.fillText(stateAt(t).loss.toFixed(3), 1801, 948);
       ctx.textAlign = 'left';
       // discretize checkbox
       ctx.font = '400 16px Roboto';
@@ -279,12 +248,10 @@ export default {
         ctx.roundRect(1655.8, 166.8, 12, 12, 1.5);
         ctx.stroke();
       }
-      // loss sparkline: one point per loss tick of the current run, x scaled to the run's length
-      const phase2 = t >= RESET;
-      const ticks = LOSS.filter(([t0]) => (phase2 ? t0 >= RESET : t0 < RESET));
-      const maxL = phase2 ? 0.376 : 0.44, steps = phase2 ? 11 : 20;
-      const pts = [];
-      ticks.forEach(([t0, l], i) => { if (t >= t0 || i === 0) pts.push([1234.5 + (472 / steps) * (phase2 ? i : i), 948 - 27 * l / maxL]); });
+      const phase2 = t >= RESET, run = runs[runIndex(t)];
+      const current = Math.min(run.length - 1, stepAt(t));
+      const maxL = run[0].loss, steps = phase2 ? 11 : 20;
+      const pts = run.slice(0, current + 1).map((state, i) => [1234.5 + 472 * i / steps, 948 - 27 * state.loss / maxL]);
       if (!phase2) pts[0] = [1234.5, 948 - 27];
       ctx.strokeStyle = 'rgb(205,205,207)';
       ctx.lineWidth = 1;
@@ -302,24 +269,33 @@ export default {
       ctx.restore();
     }
 
+    // Fixed-resolution type keeps glyph placement identical across display scales.
+    const [lyricC, lyricCtx] = mk(750, 90);
     function lyric(t) {
-      ctx.save();
-      ctx.translate(1097,128.2);ctx.scale(.9975,.974);ctx.translate(-1099,-127);
-      ctx.font = '300 40px Roboto';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = 'rgb(20,20,22)';
+      const text = lyricCtx;
+      text.setTransform(1, 0, 0, 1, -1070, -60);
+      text.clearRect(1070, 60, 750, 90);
+      text.save();
+      text.translate(1097,128.2);text.scale(.9975,.974);text.translate(-1099,-127);
+      text.font = '300 40px Roboto';
+      text.textBaseline = 'alphabetic';
+      text.fillStyle = 'rgb(20,20,22)';
       // Word onsets; each fades in over 0.04 s.
       const words = [['I’ve', 0], ['studied', 177.812], ['how', 179.152], ['to', 179.422], ['properly', 179.668]];
       let x = 1099;
-      const sp = ctx.measureText(' ').width;
+      const sp = text.measureText(' ').width;
       for (const [w, t0] of words) {
         let a = clamp((t - t0) / (w === 'studied' ? 0.045 : 0.04));
         if (w === 'studied' && t >= 178.27 && t < 178.738) a = lerp(1, 0.18, clamp((t - 178.27) / 0.04));
         if (w === 'studied' && t >= 178.738) a = 0.18 + 0.82 * clamp((t - 178.738) / 0.025);
         if (w === 'I’ve' && t >= 178.283 && t < 178.317) a = 0.86;
-        if (a > 0) { ctx.globalAlpha = a; ctx.fillText(w, x, 127); }
-        x += ctx.measureText(w).width + sp;
+        if (a > 0) { text.globalAlpha = a; text.fillText(w, x, 127); }
+        x += text.measureText(w).width + sp;
       }
+      text.restore();
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(lyricC, 1070, 60);
       ctx.restore();
     }
 

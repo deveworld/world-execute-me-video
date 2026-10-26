@@ -2,19 +2,19 @@
 // (world -> jvm -> kernel -> hypervisor -> machine), traceroute probes flying out and replies coming back,
 // the traceroute text, ^C, a fast rewind, then the particle escapes along a curve into the footer and
 // world.execute(me); swaps into me.execute(world);.
-import { at, on, clamp, lerp, prog, ease, table, beatTime, baselineIn, loadVendorFonts, rgba, resetCtx } from './lib/util.js';
-import { TRACE_GLYPHS } from './lib/traceroute-glyphs.js';
+import { canvasScale } from '../../engine/hidpi.js';
+import { at, on, clamp, lerp, prog, ease, baselineIn, loadVendorFonts, resetCtx } from './lib/util.js';
 
 const SX = 210, SY = 412;                         // beam source (where the terminal cursor was)
 const V = 2160;                                   // probe speed, px/s (36 px/frame)
 const OUT_TRAIL = 108, REPLY_TRAIL = 105;         // comet trail lengths (px)
 const NODE_X = [459.6, 709.2, 958.8, 1208.4, 1458];
 const NAMES = ['world', 'jvm', 'kernel', 'hypervisor', 'machine'];
-// exit curve after the last node: centre line (canvas coords)
-const CURVE = [[1458, 412], [1480, 410.9], [1500, 409.5], [1520, 407.8], [1540, 405.8], [1560, 403.8], [1580, 401.8],
-  [1600, 399.7], [1620, 397.6], [1640, 395.5], [1660, 392.8], [1680, 390.5], [1700, 388.3], [1720, 385.7],
-  [1740, 382.8], [1760, 380.5], [1780, 377.8], [1800, 375.5], [1820, 372.6], [1840, 369.8], [1860, 367.5],
-  [1880, 364.6], [1900, 361.7], [1920, 358.9], [1960, 353.0]];
+// A shallow cubic bends the beam upward after the last node.
+const CURVE = Array.from({ length: 33 }, (_, i) => {
+  const u = i / 32;
+  return [1458 + 502 * u, 412 - 34.5 * u - 38 * u * u + 13.5 * u * u * u];
+});
 
 const C = {
   bgIn: '#10111a', bgOut: '#06050a',
@@ -24,8 +24,9 @@ const C = {
   tr: '#e6e5fb', you: '#fbdccb', num: '#eeedfc', name: '#ffffff', ip: '#e3e2f8', ms: '#97979f', star: '#c9c6f5', ctrlc: '#e5e4f5',
   footer: '#b4b4c7',
 };
-const TR_FONT = '400 36px EscIosevka';
-const TR_NAME_FONT = '400 36px EscIosevka';
+const TR_FONT = '300 36px "Beam Mono"';
+let terminalFont = null;
+const TR_NAME_FONT = TR_FONT;
 const LABEL_FONT = '400 18px "IBM Plex Mono"';
 const FOOT_FONT = 'italic 400 25px EscVictor';
 const TX0 = 201, TCW = 18, TY0 = 472, TLH = 38;
@@ -80,14 +81,10 @@ const ARC_MAX = NODE_X.map((x, k) => {
 });
 
 // ---------- rewind ----------
-// visible fraction of each arc while the rewind retracts it
-const ARC_RETRACT = [
-  table([[139.217, 1], [139.233, 0.92], [139.250, 0.33], [139.267, 0.03], [139.283, 0]]),
-  table([[139.200, 1], [139.217, 0.95], [139.233, 0.39], [139.250, 0]]),
-  table([[139.200, 1], [139.217, 0.71], [139.233, 0.12], [139.250, 0]]),
-  table([[139.183, 1], [139.200, 0.93], [139.217, 0.31], [139.233, 0]]),
-  table([[139.183, 1], [139.200, 0.60], [139.217, 0]]),
-];
+// Each arc collapses with the same cubic ease, staggered from outside inward.
+const ARC_RETRACT = [[139.216, 0.060], [139.201, 0.049], [139.190, 0.060],
+  [139.184, 0.052], [139.177, 0.040]].map(([start, duration]) =>
+  (t) => 1 - ease.inOutCubic(prog(t, start, duration)));
 const RETRACT_T0 = 139.18;
 const BEAM_RETRACT_T = 139.231;
 const BEAM_T0 = 132.935, BEAM_DUR = 0.205, BEAM_POW = 7.25;
@@ -104,28 +101,15 @@ const bez = (s) => {
   const u = 1 - s;
   return [u * u * P0[0] + 2 * s * u * P1[0] + s * s * P2[0], u * u * P0[1] + 2 * s * u * P1[1] + s * s * P2[1]];
 };
-const STREAK_S = table([[139.392, 0], [139.400, 0.002], [139.417, 0.008], [139.433, 0.020], [139.450, 0.040],
-  [139.467, 0.070], [139.483, 0.112], [139.500, 0.169], [139.517, 0.241], [139.533, 0.333], [139.550, 0.446],
-  [139.567, 0.580], [139.583, 0.739], [139.600, 0.925], [139.6125, 1.0], [200, 1.0]]);
-const STREAK_T0 = 139.392, STREAK_HIT = 139.6125, TRAIL = 0.052;
+// Constant jerk accelerates the escaping particle along its Bezier path.
+const STREAK_S = (t) => clamp(Math.pow(Math.max(0, (t - 139.369) / 0.237), 3));
+const STREAK_T0 = 139.392, TRAIL = 0.052;
 
-// ---------- footer swap ----------
-const ME_DX = table([[139.700, 0], [139.717, -1], [139.733, -3], [139.750, -7], [139.767, -14], [139.783, -24], [139.800, -40],
-  [139.817, -63], [139.833, -96], [139.850, -131], [139.867, -159], [139.883, -178], [139.900, -191], [139.917, -200],
-  [139.933, -205], [139.950, -208], [139.967, -210]]);
-const ME_DY = table([[139.600, 0], [139.617, -1], [139.633, -6], [139.650, -15], [139.667, -25], [139.683, -36], [139.700, -47],
-  [139.717, -56], [139.733, -61], [139.750, -62], [139.933, -62], [139.950, -59], [139.967, -52], [139.983, -42],
-  [140.000, -31], [140.017, -20], [140.033, -10], [140.050, -3], [140.067, -1], [140.083, 0]]);
-const WO_DX = table([[139.700, 0], [139.717, 1], [139.733, 2], [139.750, 6], [139.767, 11], [139.783, 19], [139.800, 32],
-  [139.817, 50], [139.833, 76], [139.850, 103], [139.867, 125], [139.883, 140], [139.900, 150], [139.917, 157],
-  [139.933, 161], [139.950, 164], [139.967, 165]]);
-const WO_DY = table([[139.600, 0], [139.617, -1], [139.633, -3], [139.650, -7], [139.667, -12], [139.683, -18], [139.700, -23],
-  [139.717, -27], [139.733, -30], [139.933, -30], [139.950, -29], [139.967, -25], [139.983, -20], [140.000, -15],
-  [140.017, -10], [140.033, -5], [140.050, -2], [140.067, -1], [140.083, 0]]);
-const EX_DX = table([[139.750, 0], [139.767, -1], [139.783, -3], [139.800, -6], [139.817, -11], [139.833, -20], [139.850, -30],
-  [139.867, -37], [139.883, -41], [139.900, -43], [139.917, -44], [139.933, -45]]);
-// tables are keyed on exact frame times (rounded to ms); render(t) is called on those times
-const sample = (fn, t) => fn(t);
+// The footer words exchange places while lifting into two separate lanes.
+const swap = (t) => ease.inOutCubic(prog(t, 139.700, 0.270));
+const lift = (t) => ease.inOutSine(prog(t, 139.600, 0.150))
+  * (1 - ease.inOutSine(prog(t, 139.933, 0.150)));
+const executeShift = (t) => -45 * ease.inOutCubic(prog(t, 139.750, 0.183));
 
 function makeGlow(size, stops) {
   const c = document.createElement('canvas');
@@ -143,9 +127,15 @@ export default {
   start: 132.75,
   end: 140.51,
   z: 1,
-  fonts: [LABEL_FONT, '400 36px "Fira Code"'],
+  fonts: [LABEL_FONT],
   async create(root, env) {
     await loadVendorFonts();
+    if (!terminalFont) {
+      terminalFont = new FontFace('Beam Mono', `url(${new URL('../../assets/fonts/geistmono/GeistMono-wght.ttf', import.meta.url).href})`,
+        { weight: '100 900', featureSettings: '"ss09" 1' });
+      document.fonts.add(terminalFont);
+    }
+    await terminalFont.load();
     const { canvas, ctx } = env.canvas(root, { context: '2d', options: { alpha: false } });
     const W = canvas.width, H = canvas.height;
 
@@ -209,13 +199,23 @@ export default {
 
     ctx.font = TR_FONT;
     const trBase = baselineIn(ctx, TLH);
-    const traceGlyphs = Object.fromEntries(Object.entries(TRACE_GLYPHS).map(([ch, path]) => [ch, new Path2D(path)]));
+    const traceScaleX = TCW / ctx.measureText('0').width;
     ctx.font = FOOT_FONT;
     const footAdv = ctx.measureText('world.execute(me);').width / 18;
     const footLeft = 963.5 - footAdv * 9;
     const FOOT_BASE = 977;
 
+    // Rasterise the font at a fixed density so the terminal keeps the same stroke weight
+    // when the stage is displayed at either backing-store scale.
+    const textScale = 2 / canvasScale();
+    const textLayer = document.createElement('canvas');
+    textLayer.width = 1580 * textScale; textLayer.height = 360 * textScale;
+    const textCtx = textLayer.getContext('2d');
+
     function drawTraceroute(t) {
+      const ctx = textCtx;
+      ctx.setTransform(textScale, 0, 0, textScale, -TX0 * textScale, -TY0 * textScale);
+      ctx.clearRect(TX0, TY0, 1580, 360);
       ctx.textBaseline = 'alphabetic';
       TR_LINES.forEach((line, i) => {
         if (on(t, line.hide)) return;
@@ -226,13 +226,11 @@ export default {
           for (const [s, colour, font] of segs) {
             ctx.font = font || TR_FONT;
             ctx.fillStyle = colour;
-            for (let k = 0; k < s.length; k++) if (s[k] !== ' ') {
-              const glyph = traceGlyphs[s[k]];
-              if (glyph) {
-                ctx.save(); ctx.translate(TX0 + (col + k) * TCW + 0.5, TY0 + i * TLH + 0.5);
-                ctx.fill(glyph, 'evenodd'); ctx.restore();
-              } else ctx.fillText(s[k], TX0 + (col + k) * TCW, y);
-            }
+            ctx.save();
+            ctx.translate(TX0 + col * TCW, y);
+            ctx.scale(traceScaleX, 1);
+            ctx.fillText(s, 0, 0);
+            ctx.restore();
             col += s.length;
           }
         }
@@ -254,11 +252,11 @@ export default {
       const woHi = prog(t, 139.62, 0.08) * (1 - prog(t, 139.975, 0.075));
       ctx.fillStyle = C.footer;
       ctx.fillText(');', x(16), base);
-      ctx.fillText('.execute(', x(5) + sample(EX_DX, t), base);
+      ctx.fillText('.execute(', x(5) + executeShift(t), base);
       ctx.fillStyle = woHi > 0 ? mix(C.footer, '#c9c8dc', woHi) : C.footer;
-      ctx.fillText('world', x(0) + sample(WO_DX, t), base + sample(WO_DY, t));
+      ctx.fillText('world', x(0) + 165 * swap(t), base - 30 * lift(t));
       ctx.fillStyle = meHi > 0 ? mix(C.footer, '#ffffff', meHi) : C.footer;
-      ctx.fillText('me', x(14) + sample(ME_DX, t), base + sample(ME_DY, t));
+      ctx.fillText('me', x(14) - 210 * swap(t), base - 62 * lift(t));
     }
 
     function mix(a, b, k) {
@@ -443,6 +441,7 @@ export default {
 
         // ---- text
         drawTraceroute(t);
+        ctx.drawImage(textLayer, TX0, TY0, 1580, 360);
         if (on(t, 134.050)) drawFooter(t);
 
         // ---- escape streak: bright 2px trail covering the last 50 ms of the path, soft halo, glowing head

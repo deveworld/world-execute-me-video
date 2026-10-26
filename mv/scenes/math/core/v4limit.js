@@ -4,19 +4,11 @@ import { PLOT, U, MONO, SERIF } from './const.js';
 import { clamp, prog, marker, ease } from './draw.js';
 import { el, baselineOf } from './text.js';
 
-// ring sweep of the ε-lens in degrees (per frame, 42.70–43.035)
-const SWEEP = [[42.70, 0], [42.717, 30], [42.75, 70], [42.8, 120], [42.85, 180], [42.9, 250],
-  [42.95, 300], [43.0, 330], [43.035, 360]];
-function tableLerp(tab, t) {
-  if (t <= tab[0][0]) return tab[0][1];
-  for (let i = 1; i < tab.length; i++) {
-    if (t <= tab[i][0]) {
-      const [a, va] = tab[i - 1], [b, vb] = tab[i];
-      return va + (vb - va) * (t - a) / (b - a);
-    }
-  }
-  return tab[tab.length - 1][1];
-}
+// The magnifier ring opens at a steady angular speed, easing into its final arc.
+const lensSweep = (t) => {
+  const u = prog(t, 42.70, 0.335);
+  return Math.PI * 2 * (u + u * (1 - u) * (0.30835 + 0.14769 * (2 * u - 1)));
+};
 
 export function createLimit({ root }) {
   const keyword = el('div', `position:absolute;left:1222px;top:0;white-space:pre;` +
@@ -69,7 +61,7 @@ export function createLimit({ root }) {
       ctx.globalAlpha = appear * lens;
       ctx.strokeStyle = 'rgba(180,181,196,0.26)';
       ctx.beginPath(); ctx.moveTo(x, y + r); ctx.lineTo(x, yLimit); ctx.stroke();
-      const sweep = tableLerp(SWEEP, t) * Math.PI / 180;
+      const sweep = lensSweep(t);
       if (sweep > 0) {
         ctx.strokeStyle = '#f0f0f6';
         ctx.lineWidth = 1.3;

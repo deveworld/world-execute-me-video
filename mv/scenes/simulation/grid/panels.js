@@ -2,19 +2,15 @@
 // Every panel works in local coordinates (0..216 × 0..180) and is a pure function of time:
 // heavy state (fractals, cellular automata, particle systems) is precomputed in setup().
 import { rng as makeRng } from '../../../engine/lib/anim.js';
-import { ANT_FRAME0, ANT_STEPS, ANT_HEADS } from './ant.js';
 import { LLOYD_SITES } from './lloyd.js';
-import { BROWNIAN_FRAME0, BROWNIAN_HEADS, BROWNIAN_ANCHORS } from './brownian.js';
-import { DLA_EDGES } from './dla.js';
-import { PANEL_PHASES } from './phase-observations.js';
-import { TREE } from './tree.js';
+import { growDLA } from './dla.js';
+import { antClock, branchingTree, brownianPath } from './models.js';
 
 export const PW = 216, PH = 180;
 export const ACCENT = 'rgb(98,86,232)';
 export const INK = '#1e1e1e';
 const TAU = Math.PI * 2;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
-const phaseAt=t=>PANEL_PHASES[clamp(Math.round(t*60)-PANEL_PHASES[0][0],0,PANEL_PHASES.length-1)];
 
 // "beat events": level changes, ring emissions, tree generations…
 export const BEATS = [59.755, 60.217, 60.683, 61.133, 61.600, 62.067, 62.517, 62.978];
@@ -159,7 +155,7 @@ const mandelbrot = {
     }
     cx.putImageData(img, 0, 0);
     this.fill = cv;
-    // first frame of each new level in the reference; the new contour fades in over ~5 frames
+    // A new contour fades in on each level change.
     this.times = [3566, 3585, 3613, 3641, 3668, 3695.5, 3723.5, 3751].map((f) => (f - 0.5) / 60);
   },
   draw(ctx, tau, t) {
@@ -299,7 +295,7 @@ const pendulum = {
 // ───────────────────────────── (e) L-system tree ─────────────────────────────
 const tree = {
   setup() {
-    this.branches = TREE.map(([g, x, y, x2, y2]) => ({ g, x, y, x2, y2 }));
+    this.branches = branchingTree();
     // generation onsets (each new generation is drawn in blue)
     this.gens = [3592, 3613, 3641, 3668, 3696, 3724, 3751, 3779].map((f) => (f - 0.5) / 60);
     this.widths = [2.4, 2.1, 1.9, 1.6, 1.35, 1.15, 1.0];
@@ -336,9 +332,8 @@ const cradle = {
     else a1 = -th0 * Math.sin((TAU * (ph - (3 * P) / 4)) / P);
     this.xs.forEach((x0, i) => {
       const a = i === 0 ? a1 : i === 4 ? a5 : 0;
-      const observed=phaseAt(t);
-      const bx = i===0?observed[1]+.5:i===4?observed[3]+.5:x0;
-      const by = i===0?observed[2]+.5:i===4?observed[4]+.5:this.bar+this.L;
+      const bx = x0 + this.L * Math.sin(a);
+      const by = this.bar + this.L * Math.cos(a);
       line(ctx, x0, this.bar, bx, by, 'rgba(120,120,120,0.85)', 1);
       ctx.beginPath();
       ctx.arc(bx, by, this.r, 0, TAU);
@@ -362,7 +357,6 @@ const langton = {
     const N = 14000, G = 400, C = G / 2;
     const grid = new Uint8Array(G * G);
     let x = C, y = C, d = 0; // d: 0 up, 1 right, 2 down, 3 left
-    const visits = new Map();
     const steps = new Int32Array(N + 1 > 0 ? (N + 1) * 2 : 2);
     steps[0] = x; steps[1] = y;
     const flips = []; // [step, cellIndex]
@@ -376,18 +370,19 @@ const langton = {
     }
     this.G = G; this.C = C; this.N = N; this.flips = flips; this.steps = steps;
     this.cache = { n: 0, grid: new Uint8Array(G * G) };
-    // Matplotlib's tiny circular markers resolve to this sampled Gaussian coverage kernel.
+    // A narrow Gaussian pen keeps individual lattice sites legible.
     const sprite = document.createElement('canvas'); sprite.width = sprite.height = 3;
-    const sc = sprite.getContext('2d'), im = sc.createImageData(3,3);
-    [38,101,38,101,255,101,38,101,38].forEach((a,i) => im.data[4*i+3] = a);
-    sc.putImageData(im,0,0); this.sprite = sprite;
+    const sc = sprite.getContext('2d'), image = sc.createImageData(3, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) {
+      const radius2 = (x - 1) ** 2 + (y - 1) ** 2;
+      image.data[(y * 3 + x) * 4 + 3] = Math.round(255 * Math.exp(-radius2 / (2 * 0.73 ** 2)));
+    }
+    sc.putImageData(image, 0, 0); this.sprite = sprite;
   },
   clock(t) {
-    const f = Math.max(0, Math.min(ANT_STEPS.length - 1, t * 60 - ANT_FRAME0));
-    const i = Math.floor(f + 1e-7), j = Math.min(i + 1, ANT_STEPS.length - 1), k = f - i;
-    return { n: Math.round(ANT_STEPS[i] + (ANT_STEPS[j] - ANT_STEPS[i]) * k),
-      x: ANT_HEADS[i][0] + (ANT_HEADS[j][0] - ANT_HEADS[i][0]) * k,
-      y: ANT_HEADS[i][1] + (ANT_HEADS[j][1] - ANT_HEADS[i][1]) * k };
+    const n = Math.min(this.N, antClock(t));
+    return { n, x: 122.5 + (this.steps[n * 2] - this.C) * 3,
+      y: 83.5 + (this.steps[n * 2 + 1] - this.C) * 3 };
   },
   draw(ctx, tau, t) {
     const clock = this.clock(t), n = clock.n;
@@ -467,11 +462,11 @@ const spring = {
 
 // ───────────────────────────── (i) DLA cluster ─────────────────────────────
 const dla = {
+  setup() { this.edges = growDLA(); },
   draw(ctx, tau, t) {
-    const frame = t * 60;
     ctx.lineWidth = .8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (const [x0,y0,x1,y1,born] of DLA_EDGES) {
-      const age = frame - born;
+    for (const [x0,y0,x1,y1,born] of this.edges) {
+      const age = (t - born) * 60;
       if (age < 0) continue;
       const a = 1 - clamp((age - 1) / 7);
       ctx.strokeStyle = `rgb(${Math.round(98*a)},${Math.round(86*a)},${Math.round(232*a)})`;
@@ -613,11 +608,11 @@ const sandpile = {
 // ───────────────────────────── (l) Kuramoto model ─────────────────────────────
 const kuramoto = {
   setup() {
-    const R = makeRng(5), N = 24;
-    let th = Array.from({ length: N }, () => R() * TAU);
-    const w0 = -TAU / 0.4615; // clockwise, one turn per beat
-    const om = Array.from({ length: N }, () => w0 + (R() - 0.5) * 6);
-    const K = 9, dt = 1 / 600;
+    const R = makeRng(24), N = 24;
+    let th = Array.from({ length: N }, () => R() * TAU - 2.0032);
+    const w0 = TAU / 0.4615; // clockwise, one turn per beat
+    const om = Array.from({ length: N }, () => w0 + (R() - 0.5) * 3);
+    const K = 8, dt = 1 / 600;
     this.hist = [];
     for (let i = 0; i <= 2.4 * 600; i++) {
       if (i % 5 === 0) this.hist.push(th.slice());
@@ -638,7 +633,9 @@ const kuramoto = {
     ctx.lineWidth = 0.9;
     ctx.stroke();
     line(ctx, cx, 18.5, cx, 24, 'rgba(60,60,60,0.9)', 1);
-    const observed=phaseAt(t),th=observed[5];
+    const k = clamp((t - 60.6667) * this.rate, 0, this.hist.length - 2);
+    const i = Math.floor(k), f = k - i;
+    const th = this.hist[i].map((a, j) => a + (this.hist[i + 1][j] - a) * f);
     let sx = 0, sy = 0;
     for (const a of th) {
       const x = cx + r * Math.sin(a), y = cy - r * Math.cos(a);
@@ -655,11 +652,7 @@ const kuramoto = {
     }
     sx /= th.length; sy /= th.length;
     const R = Math.hypot(sx, sy), L = R * (r - 8);
-    let ex = observed[6][0]+.5, ey = observed[6][1]+.5;
-    if (t * 60 >= 3749.5 && R > 0) {
-      // the tracked arrow angle ends when the frame turns blue: point it at the cluster
-      ex = cx + (L * sx) / R; ey = cy - (L * sy) / R;
-    }
+    const ex = cx + (r - 8) * sx, ey = cy - (r - 8) * sy;
     line(ctx, cx, cy, ex, ey, ACCENT, 1.3);
     if (L > 6) {
       const ang = Math.atan2(ey - cy, ex - cx);
@@ -772,7 +765,7 @@ const galton = {
       dot(ctx, p[0], p[1], 2.1, INK);
     }
     void landed;
-    // the fitted normal curve rises steadily as the bins fill
+    // The normal-distribution guide rises as the bins fill.
     const H = 3 + 30 * clamp((t - 61.15) / 1.75);
     ctx.beginPath();
     for (let x = 40; x <= 177; x += 1) {
@@ -871,22 +864,6 @@ const lloyd = {
 };
 
 // ───────────────────────────── (p) Lorenz attractor ─────────────────────────────
-function lorenzPath(n, dt, start = [1, 1, 1], skip = 0) {
-  let [x, y, z] = start;
-  const out = [];
-  const f = (x, y, z) => [10 * (y - x), x * (28 - z) - y, x * y - (8 / 3) * z];
-  for (let i = 0; i < n + skip; i++) {
-    const k1 = f(x, y, z);
-    const k2 = f(x + (dt / 2) * k1[0], y + (dt / 2) * k1[1], z + (dt / 2) * k1[2]);
-    const k3 = f(x + (dt / 2) * k2[0], y + (dt / 2) * k2[1], z + (dt / 2) * k2[2]);
-    const k4 = f(x + dt * k3[0], y + dt * k3[1], z + dt * k3[2]);
-    x += (dt / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]);
-    y += (dt / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]);
-    z += (dt / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]);
-    if (i >= skip) out.push([x, y, z]);
-  }
-  return out;
-}
 const lorenz2d = {
   // State at frame 3668, Lorenz time per frame and an x–z projection. The grey attractor is the same orbit run ahead.
   F0: 3668, S0: [0.17258, 1.68945, 21.58063], TPF: 0.028144, SUB: 8,
@@ -928,40 +905,18 @@ const lorenz2d = {
 
 // ───────────────────────────── (q) Brownian motion ─────────────────────────────
 const brownian = {
-  setup() {
-    const R = makeRng(13);
-    const pts = [BROWNIAN_ANCHORS[0].slice(1)];
-    const SUB = 8;
-    // A fine Brownian bridge joins the 60 Hz cursor positions; the coarse samples form a separate
-    // half-beat polyline.
-    const heads = [pts[0], ...BROWNIAN_HEADS];
-    for (let i = 0; i < heads.length - 1; i++) {
-      const a = heads[i], b = heads[i + 1], walk = [[0,0]];
-      for (let j = 1; j <= SUB; j++) walk.push([walk[j-1][0] + (R() - .5) * 6, walk[j-1][1] + (R() - .5) * 6]);
-      for (let j = 1; j <= SUB; j++) {
-        const u = j / SUB;
-        pts.push([a[0] + (b[0] - a[0]) * u + walk[j][0] - walk[SUB][0] * u,
-          a[1] + (b[1] - a[1]) * u + walk[j][1] - walk[SUB][1] * u]);
-      }
-    }
-    this.pts = pts; this.sub = SUB;
-  },
+  setup() { this.pts = brownianPath(); },
   draw(ctx, tau, t) {
-    const f = clamp(t * 60 - BROWNIAN_FRAME0, 0, BROWNIAN_HEADS.length - 1);
-    const i = Math.floor(f + 1e-7), j = Math.min(i + 1, BROWNIAN_HEADS.length - 1), k = f - i;
-    const h = [BROWNIAN_HEADS[i][0] + (BROWNIAN_HEADS[j][0] - BROWNIAN_HEADS[i][0]) * k,
-      BROWNIAN_HEADS[i][1] + (BROWNIAN_HEADS[j][1] - BROWNIAN_HEADS[i][1]) * k];
-    const n = Math.min(this.pts.length - 1, Math.floor((f + 1) * this.sub));
-    const from = Math.max(0, n - 36 * this.sub);
-    fadingTrail(ctx, this.pts.slice(from, n + 1), '100,100,100', 0.06, 0.62, 0.65, 16);
-    const anchors = BROWNIAN_ANCHORS.filter(p => p[0] <= t * 60 + 1e-5);
+    const f = clamp((t - 61.2333) * 480, 0, this.pts.length - 1);
+    const n = Math.floor(f), q = Math.min(n + 1, this.pts.length - 1), u = f - n;
+    const h = this.pts[n].map((v, i) => v + (this.pts[q][i] - v) * u);
+    fadingTrail(ctx, [...this.pts.slice(Math.max(0, n - 288), n + 1), h], '100,100,100', 0.06, 0.62, 0.65, 16);
+    const anchors = this.pts.filter((_, i) => (i === 0 || (i >= 64 && (i - 64) % 112 === 0)) && i <= n);
     ctx.beginPath();
-    anchors.forEach((p,i) => i ? ctx.lineTo(p[1],p[2]) : ctx.moveTo(p[1],p[2]));
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = 1.05;
-    ctx.stroke();
-    for (const p of anchors) dot(ctx, p[1], p[2], 1.65, INK);
-    dot(ctx, h[0], h[1], 3.4, ACCENT);
+    anchors.forEach((p, i) => i ? ctx.lineTo(...p) : ctx.moveTo(...p));
+    ctx.strokeStyle = INK; ctx.lineWidth = 1.05; ctx.stroke();
+    for (const p of anchors) dot(ctx, ...p, 1.65, INK);
+    dot(ctx, ...h, 3.4, ACCENT);
   },
 };
 
@@ -1085,7 +1040,7 @@ const lotka = {
     };
     const map = ([x, y]) => [28.5 + x * 52, 160 - y * 52];
     this.orbits = [0.42, 0.3, 0.22, 0.16].map((s) => orbit(1, s).map(map));
-    this.main = this.orbits[2]; // the tracked dot rides the second-largest orbit
+    this.main = this.orbits[2]; // The moving dot rides the second-largest orbit.
   },
   draw(ctx, tau, t) {
     line(ctx, 28.5, 12, 28.5, 160.5, 'rgba(70,70,70,0.9)', 1);
@@ -1211,7 +1166,7 @@ const projectile = {
         ctx.fillRect(x - 0.5, y - 0.5, 1, 1);
       }
       if (el < T) {
-        // The tracked centroids are pixel indices; pixel centres sit at +0.5 in canvas space.
+        // Place the projectile at the centre of its pixel footprint.
         const x = 0.5 + s.x0 + s.vx * el, y = 0.5 + s.y0 - s.vy * el + 0.5 * s.g * el * el;
         dot(ctx, x, y, 3.5, INK);
       } else {

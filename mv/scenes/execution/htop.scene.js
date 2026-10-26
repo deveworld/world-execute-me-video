@@ -1,11 +1,10 @@
-// 162.683–169.9583333333 · htop (Midnight-Commander colours on blue) at the right half while the lyric
-// is written at the left (lyrics.scene.js). The numbers on screen come from lib/htop_data.js,
-// one entry per htop refresh; this file re-creates the UI states:
+// The htop terminal occupies the right half of the screen. A seeded scheduler generates
+// CPU counters, allocations and process states; terminal events control the UI:
 // tagging every process (cursor climbs from `countdown` to `me`), F9 "Send signal" panel,
 // SIGTERM → SIGKILL, "Sending...", zombies, everything gone but `me` + `htop`, then `me`
 // spawns 7 threads and pins all 8 CPUs at 100 %.
 import { Grid, drawGrid } from './lib/term.js';
-import { PROCS, REFRESH } from './lib/htop_data.js';
+import { createSystem } from './lib/htop-model.js';
 import { guarded } from './lib/ctx2d.js';
 
 const F = (f) => (f - 0.5) / 60; // frame number → scene boundary just before that frame
@@ -39,7 +38,7 @@ const C = {
 
 // Cut and step times.
 const T = {
-  start: F(9761),           // 162.683
+  start: 162.675,
   signal: F(9885),          // 164.750 F9 panel
   sigkill: F(9899),         // 164.983 selection jumps SIGTERM → SIGKILL
   sending: F(9924),         // 165.400
@@ -78,16 +77,7 @@ function putSegsR(g, row, endCol, segs, override) {
   for (const [s, col] of segs) c = g.put(row, c, s, override || { fg: col, bold: false });
 }
 
-// Compare on the frame grid: the OCR times are rounded to 1 ms, so e.g. 164.867 (frame 9892.02) must
-// already apply on frame 9892.
-function refreshAt(t) {
-  const f = Math.round(t * 60);
-  let rec = REFRESH[0];
-  for (const r of REFRESH) if (Math.round(r.t * 60) <= f) rec = r; else break;
-  return rec;
-}
-
-function drawHeader(g, rec) {
+function drawHeader(g, rec, bars) {
   // CPU meters, 2 columns of 4
   for (let i = 0; i < 8; i++) {
     const right = i >= 4;
@@ -100,14 +90,13 @@ function drawHeader(g, rec) {
     const w = b1 - b0 + 1;
     const txt = `${pct}%`;
     const t0 = w - txt.length;
-    // htop sizes the bar as ceil(value * width); the OCR only counted the '|' left of the percentage,
-    // so a bar that runs under the text (>= ~85 %) colours those characters bold in the bar colour.
+    // Meter fills extend under the percentage and colour the overlapping characters.
     const nEff = Math.max(n, Math.min(w, Math.ceil(parseFloat(pct) / 100 * w - 0.05)));
     for (let k = 0; k < w; k++) {
       const isBar = k < nEff;
       const col = isBar ? (k >= nEff - pink ? C.barPink : C.barNormal) : C.cyan;
       if (k >= t0) g.put(row, b0 + k, txt[k - t0], { fg: col, bold: isBar });
-      else { g.put(row, b0 + k, ' ', { fg: col, bold: isBar }); if (isBar) BARS.push([row, b0 + k, col]); }
+      else { g.put(row, b0 + k, ' ', { fg: col, bold: isBar }); if (isBar) bars.push([row, b0 + k, col]); }
     }
   }
   // Mem / Swp
@@ -126,7 +115,7 @@ function drawHeader(g, rec) {
     else if (k < n) col = C.memCache;
     const inTxt = k >= 32 - memTxt.length;
     if (inTxt) { ch = memTxt[k - (32 - memTxt.length)]; if (k >= n) col = C.cyan; }
-    else if (k < n) BARS.push([5, 6 + k, col]);
+    else if (k < n) bars.push([5, 6 + k, col]);
     g.put(5, 6 + k, ch, { fg: col, bold: k < n });
   }
   g.put(6, 2, 'Swp', { fg: C.cyan });
@@ -192,8 +181,7 @@ function drawProc(g, row, off, pid, v, mode) {
   const cpuCol = v.cpu === '0.0' ? C.shadow : parseFloat(v.cpu) >= 99.9 ? C.cyan : C.white;
   g.putR(row, 51 + off, v.cpu, st(cpuCol));
   g.putR(row, 56 + off, v.mem, st(v.mem === '0.0' ? C.shadow : C.white));
-  // in the signal state the OCR only saw the 6 on-screen chars of TIME+; pad the clipped 7th
-  if (v.time) g.putR(row, 65 + off, v.time.length === 6 ? v.time + '0' : v.time, st(C.white));
+  if (v.time) g.putR(row, 65 + off, v.time, st(C.white));
   g.put(row, 67 + off, v.name, st(mode === 'thread' ? C.cyan : C.white));
 }
 
@@ -215,20 +203,15 @@ function drawFbar(g, signal) {
   }
 }
 
-// OCR correction: at 164.983 CPU1 shows 9 green + 3 pink bars.
-for (const r of REFRESH) if (r.t === 164.983) r.cpu[1] = [12, 3, '36.4'];
-
 // Meter bar cells of the current screen: [row, col, colour]; drawn as blocks after the text grid.
-const BARS = [];
-
-function buildScreen(g, t) {
+function buildScreen(g, t, system, bars) {
   g.clear();
-  BARS.length = 0;
-  const rec = refreshAt(t);
-  drawHeader(g, rec);
+  bars.length = 0;
+  const rec = system.at(t);
+  drawHeader(g, rec, bars);
   const signal = t >= T.signal && t < T.sending;
   const procVal = (p, zombie = false) => {
-    const [pid, name, virt, res, shr, mem] = PROCS[p - 1];
+    const [pid, name, virt, res, shr, mem] = system.procs[p - 1];
     const r = rec.rows[p] || ['S', '0.0', null];
     return { s: zombie ? 'Z' : r[0], cpu: zombie ? '0.0' : r[1], time: r[2], virt, res, shr, mem: zombie ? '0.0' : mem, name, zombie };
   };
@@ -292,6 +275,7 @@ export default {
     root.style.background = C.bg;
     const { ctx } = env.canvas(root);
     const g = new Grid(80, 45);
+    const system = createSystem(), bars = [];
     ctx.font = FONT;
     const advance = ctx.measureText('0'.repeat(10)).width / 10;
     return {
@@ -303,9 +287,9 @@ export default {
         // divider between lyric and htop halves
         ctx.fillStyle = '#6a71ee';
         ctx.fillRect(1012, 0, 1, 1080);
-        buildScreen(g, t);
+        buildScreen(g, t, system, bars);
         drawGrid(ctx, g, { ...GRID, font: FONT, boldFont: BOLD, advance, defaultFg: C.white });
-        for (const [row, col, colour] of BARS) {
+        for (const [row, col, colour] of bars) {
           ctx.fillStyle = colour;
           ctx.fillRect(GRID.x + col * GRID.cw + 4, Math.round(GRID.y + row * GRID.ch + 5.5), 3, 16);
         }

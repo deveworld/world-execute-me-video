@@ -2,35 +2,13 @@
 // One continuous shot: the algebraic heart (x²+y²−1)³ − x²y³ = 0 drawn as a sparkling outline on a starfield,
 // the equation typed inside, a caret that drops into the heart's origin as a lavender dot, and finally the
 // heart shrinking towards (1120, 559) for the hand-off to the bookends segment at 193.60.
-import { loadLoveFonts, clamp, lerp, prog, table, heartPath, traceHeart, noise1, rng } from './lib.js';
-import { STARS } from './heart/stars.js';
-import { SERIF_PATHS } from './heart/serif-paths.js';
-import { EQUATION_PATHS } from './heart/equation-paths.js';
+import { loadLoveFonts, clamp, lerp, prog, table, heartPath, heartAt, traceHeart, noise1, rng } from './lib.js';
+import { heartMove, sparkPosition, makeStars } from './heart/motion.js';
 
 const W = 1920, H = 1080;
 // Heart origin (between cusp and tip) and pixels per unit (canvas px; curve y up).
 const P0 = { x: 700.0, y: 586.0, S: 352 };
 const P1 = { x: 1120.45, y: 559.45, S: 181.75 };
-// Progress of the final move, per frame.
-const MOVE = [[192.683, 0], [192.7, 0.001], [192.717, 0.002], [192.733, 0.004], [192.75, 0.007], [192.767, 0.01],
-  [192.783, 0.014], [192.8, 0.019], [192.817, 0.025], [192.833, 0.031], [192.85, 0.039], [192.867, 0.048],
-  [192.883, 0.058], [192.9, 0.07], [192.917, 0.083], [192.933, 0.097], [192.95, 0.115], [192.967, 0.134],
-  [192.983, 0.156], [193.0, 0.18], [193.017, 0.207], [193.033, 0.238], [193.05, 0.272], [193.067, 0.311],
-  [193.083, 0.354], [193.1, 0.4], [193.117, 0.449], [193.133, 0.5], [193.15, 0.551], [193.167, 0.6],
-  [193.183, 0.646], [193.2, 0.689], [193.217, 0.727], [193.233, 0.761], [193.25, 0.792], [193.267, 0.82],
-  [193.283, 0.844], [193.3, 0.866], [193.317, 0.885], [193.333, 0.901], [193.35, 0.916], [193.367, 0.93],
-  [193.383, 0.941], [193.4, 0.952], [193.417, 0.961], [193.433, 0.968], [193.45, 0.975], [193.467, 0.981],
-  [193.483, 0.986], [193.5, 0.99], [193.517, 0.993], [193.533, 0.996], [193.55, 0.998], [193.567, 0.9995], [193.583, 1]];
-
-// Sparkle riding up the right side of the outline (screen coords), then drifting off.
-const SPARK = [[184.6, 1066, 556], [184.867, 1073, 535], [185.017, 1079, 519], [185.167, 1084, 503], [185.317, 1089, 488],
-  [185.467, 1092, 473], [185.617, 1095, 458], [185.767, 1097, 444], [185.917, 1099, 429], [186.067, 1100, 416],
-  [186.217, 1101, 402], [186.367, 1101, 390], [186.517, 1100, 379], [186.667, 1100, 369], [186.817, 1099, 358],
-  [186.967, 1097, 349], [187.117, 1096, 340], [187.267, 1095, 333], [187.417, 1093, 326], [187.567, 1092, 321],
-  [187.717, 1091, 316], [187.867, 1090, 313], [188.017, 1089, 310], [188.167, 1089, 309], [188.65, 1090, 308],
-  [188.717, 1095, 306], [188.767, 1111, 301], [188.817, 1121, 298], [188.867, 1132, 295], [188.917, 1144, 292],
-  [189.0, 1165, 285], [189.05, 1178, 281], [189.1, 1191, 278], [189.15, 1204, 274], [189.2, 1216, 270], [189.25, 1228, 266], [189.3, 1238, 263], [189.35, 1248, 261]];
-
 const ITAL = 'italic 600 85.6px "Cormorant Garamond"';
 const UP_LOVE = '500 69px "Cormorant Garamond"';
 const WHITE = '#f4f2fa';
@@ -45,7 +23,7 @@ export default {
     await loadLoveFonts([ITAL, UP_LOVE]);
     const { ctx } = env.canvas(root);
     const hp = heartPath();
-    const serifPaths=new Map(Object.entries(SERIF_PATHS).map(([w,v])=>[w,{...v,shape:new Path2D(v.path)}]));
+    const stars = makeStars();
 
     // Strands of the sparkling outline: per-strand offset noise along the curve.
     const R = rng(7331);
@@ -77,10 +55,10 @@ export default {
       ['2', 's', 819, 186.243], ['y', 'i', 839, 186.273], ['3', 's', 871, 186.307], ['=', 'r', 910, 186.76],
       ['0', 'r', 963, 186.793]];
     const EQ_FONT = { r: '400 58px LoveSTIX', i: 'italic 400 58px LoveSTIX', s: '400 40px LoveSTIX' };
-    const eqTok = EQ.map(([txt, st, x, t0],i) => {
+    const eqTok = EQ.map(([txt, st, x, t0]) => {
       ctx.font = EQ_FONT[st];
       const m = ctx.measureText(txt);
-      return { txt, font: EQ_FONT[st], x: x + m.actualBoundingBoxLeft, y: st === 's' ? EQ_BASE - 22 : EQ_BASE, t0,shape:new Path2D(EQUATION_PATHS[i]) };
+      return { txt, font: EQ_FONT[st], x: x + m.actualBoundingBoxLeft, y: st === 's' ? EQ_BASE - 22 : EQ_BASE, t0 };
     });
 
     function bg(t) {
@@ -105,7 +83,7 @@ export default {
       if (sa > 0) {
         ctx.save();
         ctx.fillStyle = '#ffffff';
-        for (const [x, y, v] of STARS) {
+        for (const [x, y, v] of stars) {
           ctx.globalAlpha = sa * clamp(v / 245);
           ctx.beginPath();
           ctx.arc(x + 0.5, y + 0.5, .65, 0, Math.PI * 2);
@@ -136,10 +114,10 @@ export default {
       // The sparkling strands stay until 186.8 and are removed in two steps (186.817, 186.917); the
       // wide bloom fades separately over the next 1.5 s.
       const spread = table([[184.7, 1], [186.8, 1], [186.817, .7], [186.9, .55], [186.917, .35], [187.0, .2], [187.1, .05], [187.2, 0]], t);
-      const bloom = table([[184.7, .54], [186.8, .57], [186.817, .55], [186.9, .5], [186.917, .45], [187.0, .4], [187.2, .33], [187.5, .27], [187.8, .22], [188.0, .17], [188.5, .1], [189.0, .05], [189.5, 0]], t);
+      const bloom = (.54 + .03 * prog(t, 184.7, 2.1)) * Math.exp(-Math.max(0, t - 186.8) / .85) * (1 - prog(t, 188.6, .9));
       // Grey rim around the thin outline: it fades out during the
       // final shrink, so the outline that hands over to the reprise at 193.6 has no rim.
-      const halo = table([[187.5, 0], [187.7, .98], [188.0, .95], [188.5, .93], [189.0, .68], [190.0, .67], [191.2, .65], [191.6, .57], [192.0, .55], [192.95, .52], [193.05, .3], [193.15, .18], [193.25, .05], [193.3, 0]], t);
+      const halo = prog(t, 187.5, .2) * (.98 - .30 * prog(t, 188.45, .55) - .16 * prog(t, 190.7, 2.25)) * (1 - prog(t, 192.95, .35));
       const glow = table([[187.0, 1], [187.6, 0.75], [188.4, 0.5], [189.6, 0.12], [190.2, 0.08]], t);
       ctx.save();
       ctx.lineJoin = 'round';
@@ -210,19 +188,16 @@ export default {
       }
       ctx.strokeStyle = 'rgb(250,250,255)';
       // the shrunk outline is a little finer than a scaled copy
-      ctx.lineWidth = (2.2 - .65 * spread) * k * (1 - .12 * table(MOVE, t));
+      ctx.lineWidth = (2.2 - .65 * spread) * k * (1 - .12 * heartMove(t));
       traceHeart(ctx, cx, cy, S);
       ctx.stroke();
       ctx.restore();
     }
 
     function sparkle(t) {
-      // Glow amplitude and radial profile around the sparkle
-      // (excess ~240/195/108/58/37/23 at r 0/4/9/16/25/35 px while it rides the outline).
-      const a = table([[184.6, .82], [186.5, .82], [187.0, 1], [187.6, 1], [188.0, .9], [188.65, .88], [188.7, .72], [188.8, .66], [188.95, .63], [189.0, .62], [189.1, .55], [189.15, .5], [189.2, .35], [189.25, .2], [189.3, .1], [189.35, .03], [189.4, 0]], t);
+      const a = table([[184.6, .82], [187, 1], [188.65, .88], [188.8, .66], [189.1, .55], [189.4, 0]], t) * (1 - .25 * prog(t, 189.1, .25));
       if (a <= 0) return;
-      const x = table(SPARK.map((s) => [s[0], s[1]]), t);
-      const y = table(SPARK.map((s) => [s[0], s[2]]), t);
+      const [x, y] = sparkPosition(t, heartAt);
       const warm = prog(t, 188.6, 0.4);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -239,9 +214,9 @@ export default {
       ctx.restore();
     }
 
-    function caretAndDot(t, ox, oy) {
+    function caretAndDot(t) {
       // blinking caret at the heart's centre
-      const on = (t < 184.95) || (t >= 185.45 && t < 185.95) || (t >= 186.45 && t < 186.95) || (t >= 187.45 && t < 187.87);
+      const on = ((t - 184.45) % 1 < .5) && t < 187.87;
       if (on) {
         const sh = t < 187.78 ? 1 : 1 - prog(t, 187.78, 0.09);
         const h = 40 * sh;
@@ -253,9 +228,9 @@ export default {
       const tf = t - 187.9;
       let y = tf <= 0 ? 517 : Math.min(585.5, 517 + 0.5 * 2350 * tf * tf);
       let x = 699.5;
-      const p = table(MOVE, t);
+      const p = heartMove(t);
       if (p > 0) { x = lerp(699.6, 1120.1, p); y = lerp(585.5, 559.0, p); }
-      const r = table([[187.85, 2.4], [188.0, 3.4], [188.1, 4.8], [188.2, 5.8], [188.35, 6.6]], t);
+      const r = lerp(2.4, 6.6, Math.sin(prog(t, 187.85, .5) * Math.PI / 2) ** 1.4);
       const lav = prog(t, 188.18, 0.22);
       ctx.save();
       if (lav > 0) {
@@ -278,7 +253,7 @@ export default {
     }
 
     function equation(t) {
-      const out = table([[189.683, 1], [189.7, .755], [189.717, .615], [189.733, .47], [189.75, .27], [189.767, .09], [189.783, 0]], t);
+      const out = 1 - prog(t, 189.683, .1);
       if (out <= 0) return;
       ctx.save();
       ctx.fillStyle = WHITE;
@@ -288,7 +263,7 @@ export default {
         if (a <= 0) continue;
         ctx.font = tk.font;
         ctx.globalAlpha = a * out;
-        ctx.fill(tk.shape,'evenodd');ctx.strokeStyle=WHITE;ctx.lineWidth=.25;ctx.stroke(tk.shape);
+        ctx.fillText(tk.txt, tk.x, tk.y);
       }
       ctx.restore();
     }
@@ -296,37 +271,39 @@ export default {
     // word fade-in: starts ~2 frames before it is legible, ~0.18 s, eased out
     const fadeIn = (t, t0) => 1 - Math.pow(1 - clamp((t - t0 + 0.03) / 0.18), 1.8);
 
-    // Words are placed at the original's ink extents: [text, inkLeft, inkRight, tIn, color, font].
-    // The original italic is narrower than any free Garamond, so each word is compressed horizontally to fit.
+    // Ink widths keep the narrow serif layout while the font supplies the letterforms.
     const fitCache = new Map();
     function fitWord(w, l, r, y, a, color = WHITE, font = ITAL) {
       if (a <= 0) return;
-      const vector=serifPaths.get(font===UP_LOVE?'up:'+w:w);
-      if(vector){
-        ctx.save();ctx.translate(l,y);ctx.scale((r-l+1)/vector.width,1);ctx.globalAlpha=a;ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineWidth=.25;
-        ctx.fill(vector.shape,'evenodd');ctx.stroke(vector.shape);ctx.restore();return;
-      }
-      const key = font + '|' + w;
+      const key = font + '|' + w + '|' + color;
       let f = fitCache.get(key);
       if (!f) {
-        ctx.font = font;
+        // Large-size metrics avoid device-pixel rounding changing the word spacing.
+        ctx.font = font.replace(/([\d.]+)px/, (_, size) => `${Number(size) * 8}px`);
         ctx.letterSpacing = '0px';
         const m = ctx.measureText(w);
-        const ink = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+        const ink = (m.actualBoundingBoxLeft + m.actualBoundingBoxRight) / 8;
         // upright "Lo-o-ove" is letter-spaced in the original; the italic words are condensed
         f = font === UP_LOVE
-          ? { sx: 1, ls: (r - l + 1 - ink) / (w.length - 1), left: m.actualBoundingBoxLeft }
-          : { sx: (r - l + 1) / ink, ls: 0, left: m.actualBoundingBoxLeft };
+          ? { sx: 1, ls: (r - l + 1 - ink) / (w.length - 1), left: m.actualBoundingBoxLeft / 8 }
+          : { sx: (r - l + 1) / ink, ls: 0, left: m.actualBoundingBoxLeft / 8 };
+        if (font === UP_LOVE) f.glyphs = Array.from(w, (ch, i) => [ch, ctx.measureText(w.slice(0, i)).width / 8 + i * f.ls]);
+        // Supersampling keeps small serifs and their baselines stable across device scales.
+        const raster = document.createElement('canvas');
+        raster.width = Math.ceil((r - l + 17) * 3); raster.height = 128 * 3;
+        const inkCtx = raster.getContext('2d', { willReadFrequently: true });
+        const sy = font === ITAL ? (/[bdfhklt]/.test(w) ? .915 : w === 'I' ? 1 : /i/.test(w) ? 1.03 : .94) : 1;
+        inkCtx.scale(3, 3); inkCtx.translate(8, 90); inkCtx.scale(f.sx, sy);
+        inkCtx.font = font; inkCtx.textBaseline = 'alphabetic'; inkCtx.fillStyle = color;
+        if (f.glyphs) for (const [ch, x] of f.glyphs) inkCtx.fillText(ch, f.left + x, 0);
+        else inkCtx.fillText(w, f.left, 0);
+        f.raster = raster;
         fitCache.set(key, f);
       }
       ctx.save();
-      ctx.font = font;
-      ctx.letterSpacing = `${f.ls}px`;
-      ctx.fillStyle = color;
+      ctx.letterSpacing = '0px';
       ctx.globalAlpha = a;
-      ctx.translate(l, y);
-      ctx.scale(f.sx, 1);
-      ctx.fillText(w, f.left, 0);
+      ctx.drawImage(f.raster, l - 8, y - 90, f.raster.width / 3, 128);
       ctx.restore();
     }
     const RIGHT_A = [['I', 1199, 1221, 407.5, 184.0], ['know', 1239, 1376, 407.5, 185.117], ['the', 1394, 1469, 407.5, 185.45],
@@ -337,13 +314,17 @@ export default {
     const INNER_A = [['I', 540, 562, 407.5, 189.817], ['am', 580, 656, 407.5, 189.883], ['trapped', 673, 859, 407.5, 190.317],
       ['Trapped', 563, 770, 504.5, 190.733], ['in', 788, 835, 504.5, 191.217]];
 
+    // Build every word with the same context state before frames can be sought in any order.
+    ctx.textBaseline = 'alphabetic';
+    for (const words of [RIGHT_A, RIGHT_B, INNER_A]) for (const [w, l, r, y, , color, font] of words) {
+      fitWord(w, l, r, y, 1, color, font);
+    }
+
     function rightText(t) {
       ctx.textBaseline = 'alphabetic';
-      // Fade-outs per frame.
-      const outA = table([[188.383, 1], [188.4, .795], [188.417, .563], [188.433, .338], [188.45, .119], [188.467, 0]], t);
+      const outA = 1 - prog(t, 188.383, .077);
       if (outA > 0) for (const [w, l, r, y, t0, col, font] of RIGHT_A) fitWord(w, l, r, y, fadeIn(t, t0) * outA, col, font);
-      const outB = table([[190.2, 1], [190.217, .99], [190.233, .96], [190.25, .9], [190.267, .85], [190.283, .79], [190.3, .77], [190.317, .7], [190.333, .65],
-        [190.35, .58], [190.367, .55], [190.383, .42], [190.4, .37], [190.417, .3], [190.433, .23], [190.45, .17], [190.467, .11], [190.483, .06], [190.5, 0]], t);
+      const outB = 1 - prog(t, 190.2, .3) ** 1.2;
       if (t >= 188.5 && outB > 0) for (const [w, l, r, y, t0, col] of RIGHT_B) fitWord(w, l, r, y, fadeIn(t, t0) * outB, col);
     }
 
@@ -354,9 +335,9 @@ export default {
       ctx.scale(k, k);
       ctx.translate(-P0.x, -P0.y);
       ctx.textBaseline = 'alphabetic';
-      const outA = table([[191.333, 1], [191.35, .81], [191.367, .59], [191.383, .37], [191.4, .16], [191.417, 0]], t);
+      const outA = 1 - prog(t, 191.333, .077);
       if (outA > 0) for (const [w, l, r, y, t0] of INNER_A) fitWord(w, l, r, y, fadeIn(t, t0) * outA);
-      const aL = Math.min(prog(t, 191.433, 0.067), table([[192.333, 1], [192.35, .88], [192.367, .68], [192.383, .48], [192.4, .29], [192.417, .11], [192.433, 0]], t));
+      const aL = Math.min(prog(t, 191.433, .067), 1 - prog(t, 192.333, .093));
       fitWord('Lo-o-ove', 582, 817, 505, aL, LAV, UP_LOVE);
       ctx.restore();
     }
@@ -368,14 +349,14 @@ export default {
         ctx.globalCompositeOperation = 'source-over';
         ctx.filter = 'none';
         bg(t);
-        const p = table(MOVE, t);
+        const p = heartMove(t);
         const cx = lerp(P0.x, P1.x, p), cy = lerp(P0.y, P1.y, p), S = lerp(P0.S, P1.S, p);
         outline(t, cx, cy, S);
         sparkle(t);
         equation(t);
         rightText(t);
         innerText(t, cx, cy, S / P0.S);
-        caretAndDot(t, cx, cy);
+        caretAndDot(t);
       },
     };
   },

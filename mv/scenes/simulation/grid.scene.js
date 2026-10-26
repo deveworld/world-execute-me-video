@@ -88,7 +88,7 @@ export default {
         // dark border: diagonal wave (1/8 beat per diagonal step) starting at the lower left
         const td = 62.117 + (STEP / 2) * (s.c + 2 - s.r);
         const pd = clamp((t - td) / 0.055);
-        // border draw-on: first visible frame of each frame in the reference (every ~6.83 frames)
+        // Draw each border on its sixteenth-note entrance.
         const pl = clamp((t - (k ? BORDER_ONSET[k] / 60 - 0.0225 : t0)) / DRAW);
         if (pd < 1) borderPath(ctx, s.x, s.y, pl, LIGHT);
         if (pd > 0) borderPath(ctx, s.x, s.y, pd, DARK);
@@ -111,12 +111,12 @@ export default {
         }
       });
 
-      // lyric (LaTeX body text, words placed where the reference sets them)
+      // The lower-left text follows the typeset body-text layout.
       ctx.font = '400 40.6px LMRoman12';
       ctx.textAlign = 'left';
       ctx.fillStyle = TEXT;
       const reset = 60.183;
-      // word times are reference frames: a word listed at frame F shows from frame F on
+      // Reveal each word on the nearest frame boundary.
       const on = (tw) => t * 60 >= Math.round(tw * 60) - 0.5;
       for (const [w, x, tw] of LYRIC) {
         if (!on(tw)) continue;

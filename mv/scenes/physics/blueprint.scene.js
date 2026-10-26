@@ -1,8 +1,8 @@
 // 44.508333–47.725 "Switch my current / To AC, to DC": blueprint of a full-bridge rectifier.
 // Canvas 2D. Everything is a pure function of t: the power-on wavefront, flow dots (integrated
 // branch currents), scope traces with phosphor fade, diode conduction and the pen-drawn lettering.
-import { STROKES } from './blueprint/strokes.js';
-import { BLUEPRINT_LABELS, SCOPE_LABELS } from './blueprint/labels.js';
+import { createPen, drawTerminals } from './blueprint/pen.js';
+import { drawComponentLabels, drawScopeLabel } from './blueprint/typography.js';
 import {
   T_SCENE, P, K, vSrc, clamp, sstep, TL, currents, N, EDGES, DOT_PATHS, DOT_SPACING, DOT_HIDE,
   DIODES, LABELS, SCOPES,
@@ -16,22 +16,8 @@ const COL = {
   head: 'rgb(248,252,255)',     // wavefront head
   label: 'rgb(200,208,255)',
   dot: 'rgb(236,241,255)',
-  ink: '#ffffff',
 };
 const AD = '"Architects Daughter"';
-
-function drawVectorLabel(ctx, groups) {
-  for (const [color, paths] of groups) {
-    ctx.fillStyle = `rgb(${color.join(',')})`;
-    ctx.beginPath();
-    for (const path of paths) {
-      ctx.moveTo(path[0], path[1]);
-      for (let j = 2; j < path.length; j += 2) ctx.lineTo(path[j], path[j + 1]);
-      ctx.closePath();
-    }
-    ctx.fill('evenodd');
-  }
-}
 
 // ---------------------------------------------------------------- helpers
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -143,21 +129,13 @@ function drawScopeBox(ctx, s) {
   ctx.lineWidth = 2;
   ctx.strokeStyle = 'rgb(170,174,250)';
   ctx.stroke();
-  drawVectorLabel(ctx, SCOPE_LABELS[s.label]);
+  drawScopeLabel(ctx, s);
   ctx.restore();
 }
 
 function drawLabels(ctx) {
   ctx.save();
-  ctx.fillStyle = COL.label;
-  ctx.textBaseline = 'alphabetic';
-  for (const [text, x, y, size] of LABELS) {
-    if (BLUEPRINT_LABELS[text]) { drawVectorLabel(ctx, BLUEPRINT_LABELS[text]); continue; }
-    ctx.fillStyle = COL.label;
-    ctx.font = `${size}px ${AD}`;
-    let cx = x;
-    for (const ch of text) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width - 0.6; }
-  }
+  drawComponentLabels(ctx, LABELS);
   // generator symbol: one period of a sine inside G1
   ctx.strokeStyle = COL.label;
   ctx.lineWidth = 2;
@@ -171,36 +149,17 @@ function drawLabels(ctx) {
   ctx.restore();
 }
 
-function strokePaths(ctx, list, tFrame) {
-  // stroke data are skeleton pixel indices: pixel centres sit at +0.5 in canvas space
-  ctx.save();
-  ctx.translate(0.5, 0.5);
-  for (const arr of list) {
-    let started = false;
-    ctx.beginPath();
-    for (let i = 0; i < arr.length; i += 3) {
-      const f = arr[i + 2];
-      if (f >= 0 && f > tFrame) break;
-      if (!started) { ctx.moveTo(arr[i], arr[i + 1]); started = true; } else ctx.lineTo(arr[i], arr[i + 1]);
-    }
-    if (started) {
-      if (arr.length === 3) ctx.lineTo(arr[0] + 0.01, arr[1]);
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-
 // ---------------------------------------------------------------- scene
 export default {
   id: 'physics/blueprint',
   start: 44.5083333333,
   end: 47.725,
-  fonts: ['800 26px "JetBrains Mono"'],
   async create(root, env) {
     await env.loadFont('Architects Daughter', '/scenes/physics/fonts/ArchitectsDaughter-Regular.ttf');
-    await document.fonts.load(`26px ${AD}`);
-    const { canvas, ctx } = env.canvas(root);
+    await env.loadFont('Liberation Mono', '/scenes/physics/fonts/LiberationMono-Bold.ttf', { weight: '700' });
+    await Promise.all([document.fonts.load(`26px ${AD}`), document.fonts.load('700 27px "Liberation Mono"')]);
+    const { ctx } = env.canvas(root);
+    const drawPen = createPen();
 
     // static layer: background, grid, scopes, labels, white terminal marks
     const stat = document.createElement('canvas');
@@ -520,22 +479,12 @@ export default {
       ctx.save();
       ctx.lineWidth = 2.0; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       const LAV = [200, 208, 255], WHITE = [255, 255, 255];
-      ctx.strokeStyle = mix(LAV, WHITE, clamp((t - 46.025) / 0.11));
-      strokePaths(ctx, [...STROKES.tildeL, ...STROKES.tildeR], 1e9);
-      ctx.strokeStyle = mix(LAV, WHITE, clamp((t - 47.035) / 0.11));
-      strokePaths(ctx, [...STROKES.plus, ...STROKES.minus], 1e9);
+      drawTerminals(ctx, mix(LAV, WHITE, clamp((t - 46.025) / 0.11)), mix(LAV, WHITE, clamp((t - 47.035) / 0.11)));
       ctx.fillStyle = mix(LAV, [242, 246, 255], clamp((t - 47.2) / 0.05));
       ctx.font = `22px ${AD}`;
       ctx.fillText('+', 1238, 568);
       ctx.restore();
-      // pen lettering
-      const fr = Math.round(t * 60);
-      ctx.save();
-      ctx.strokeStyle = COL.ink; ctx.lineWidth = 2.0; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      strokePaths(ctx, STROKES.title, fr);
-      strokePaths(ctx, STROKES.toac, fr);
-      strokePaths(ctx, STROKES.todc, fr);
-      ctx.restore();
+      drawPen(ctx, t);
     }
 
     return { render };
